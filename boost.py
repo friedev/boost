@@ -25,15 +25,15 @@ from enum import Enum
 
 
 DEFAULT_BOARD = """
-P P P P . P P P P
-. . . . . . . . .
-. . . . . . . . .
-. . . . . . . . .
-. . . . . . . . .
-. . . . . . . . .
-. . . . . . . . .
-. . . . . . . . .
-p p p p . p p p p
+PPPP.PPPP
+.........
+.........
+.........
+.........
+.........
+.........
+.........
+pppp.pppp
 """
 
 DEFAULT_WIDTH = 9
@@ -225,6 +225,7 @@ class Board:
         if len(args) == 1 and isinstance(args[0], str):
             self.load(args[0])
             self.place_dragons(7)
+        self.history = [str(self)]
 
     @staticmethod
     def empty():
@@ -238,7 +239,7 @@ class Board:
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 if self.board[row][col]:
-                    string += self.board[row][col].name
+                    string += str(self.board[row][col])
                 else:
                     string += '.'
                 string += ' '
@@ -427,12 +428,12 @@ class Board:
         piece = self.get_piece(move.start)
         destination = self.get_piece(move.end)
         boost = self.get_boost(move.start)
-        error = None
+        error = ''
         if move.start == move.end:
             if self.can_build_tower(move.start, owner):
-                return None
+                return ''
             if self.can_promote_knight(move.start, owner):
-                return None
+                return ''
             return 'You cannot build a tower here nor promote a pawn to a knight here.'
         if not piece:
             error = f'There is no piece at {move.start} to move.'
@@ -549,6 +550,7 @@ class Board:
                     winners = self.tower_winners
                     if winners:
                         return winners
+        self.history.append(str(self))
         return set()
 
 
@@ -562,19 +564,26 @@ def game_over(winners):
     sys.exit(0)
 
 
+def next_turn(owner):
+    return Owner.TOP if owner == Owner.BOTTOM else Owner.BOTTOM
+
+def prev_turn(owner):
+    # Valid for a 2-player game
+    return next_turn(owner)
+
+
 def main():
     board = Board(DEFAULT_BOARD)
     turn = Owner.BOTTOM
-    error = None
+    error = ''
     winners = set()
     while True:
         os.system('clear')
         print(board.labeled)
         if winners:
             game_over(list(winners))
-        if error:
-            print(error)
-            error = None
+        print(error)
+        error = ''
         try:
             move_input = input(f"{turn.value} Player's Move: ")
         except KeyboardInterrupt:
@@ -583,17 +592,25 @@ def main():
             sys.exit(0)
         if move_input == 'exit':
             sys.exit(0)
-        try:
-            move = Move(move_input)
-        except ValueError:
-            error = 'Bad move format. Moves should be given in chess notation.\n'\
-                    + 'e.g. "a1b2" to move from A1 to B2.'
+        elif move_input == 'undo':
+            if len(board.history) > 1:
+                board.history.pop()
+                board.load(board.history[-1])
+                turn = prev_turn(turn)
+            else:
+                error = 'There are no previous moves to undo.'
         else:
-            error = board.get_move_error(move, turn)
-            if not error:
-                winners = board.move(move, turn)
-                if not winners and not SOLO:
-                    turn = Owner.TOP if turn == Owner.BOTTOM else Owner.BOTTOM
+            try:
+                move = Move(move_input)
+            except ValueError:
+                error = 'Bad move format. Moves should be given in chess notation.\n'\
+                        + 'e.g. "a1b2" to move from A1 to B2.'
+            else:
+                error = board.get_move_error(move, turn)
+                if not error:
+                    winners = board.move(move, turn)
+                    if not winners and not SOLO:
+                        turn = next_turn(turn)
 
 
 if __name__ == '__main__':
