@@ -1,8 +1,6 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # TODO core features
-# Capturing
-# Victory conditions
 # Dragons (symmetric placement)
 #   Random choice from worklist
 #   Place on one half of the map
@@ -21,6 +19,7 @@
 #   Walls (for scenarios)
 #   New playable pieces (optionally enabled)
 # Tactical puzzles
+# CLI arguments to change game options (e.g. board, solo)
 # Consider adding color:
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python
 
@@ -266,6 +265,22 @@ class Board:
             string += f"{chr(col + 65)} "
         return string
 
+    @property
+    def cells(self):
+        cells = []
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                cells.append(Cell(row, col))
+        return cells
+
+    @property
+    def tower_cells(self):
+        cells = []
+        for row in range(1, len(self.board) - 1):
+            for col in range(1, len(self.board[row]) - 1):
+                cells.append(Cell(row, col))
+        return cells
+
     def load(self, string):
         row, col = 0, 0
         for line in string.splitlines():
@@ -292,27 +307,29 @@ class Board:
             return None
         return self.board[cell.row][cell.col]
 
+    def set_piece(self, cell, piece):
+        if self.in_bounds(cell):
+            self.board[cell.row][cell.col] = piece
+
     def count_all_pieces(self):
         pieces = {}
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                piece = self.board[row][col]
-                if piece:
-                    if piece in pieces:
-                        pieces[piece] += 1
-                    else:
-                        pieces[piece] = 1
+        for cell in self.cells:
+            piece = self.get_piece(cell)
+            if piece:
+                if piece in pieces:
+                    pieces[piece] += 1
+                else:
+                    pieces[piece] = 1
         return pieces
 
     def count_pieces(self, owner, piece_type):
         count = 0
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                piece = self.board[row][col]
-                if piece and\
-                        (not owner or piece.owner == owner) and\
-                        (not piece_type or piece.piece_type == piece_type):
-                    count += 1
+        for cell in self.cells:
+            piece = self.get_piece(cell)
+            if piece and\
+                    (not owner or piece.owner == owner) and\
+                    (not piece_type or piece.piece_type == piece_type):
+                count += 1
         return count
 
     def get_boost(self, cell):
@@ -414,29 +431,117 @@ class Board:
     def is_valid(self, move, owner):
         return not self.get_move_error(move, owner)
 
+    def is_flanked(self, cell):
+        piece = self.get_piece(cell)
+        # Assumes the opposite pairs given by neighbors are 0-1 and 2-3
+        neighbor_pieces = [self.get_piece(neighbor) for neighbor in cell.neighbors]
+        for pair in zip(neighbor_pieces[::2], neighbor_pieces[1::2]):
+            if pair[0]\
+                    and pair[1]\
+                    and pair[0].owner != piece.owner\
+                    and pair[1].owner != piece.owner:
+                return True
+        return False
+
+    def capture(self, cell):
+        piece = self.get_piece(cell)
+        assert piece
+        assert piece.piece_type == PieceType.PAWN or piece.piece_type == PieceType.DRAGON
+        captures = 0
+        for neighbor in cell.neighbors:
+            neighbor_piece = self.get_piece(neighbor)
+            if neighbor_piece\
+                    and neighbor_piece.owner != piece.owner\
+                    and neighbor_piece.owner != Owner.DRAGON\
+                    and self.is_flanked(neighbor):
+                self.set_piece(neighbor, None)
+                captures += 1
+        return captures
+
+    @property
+    def defeated(self):
+        defeated = []
+        pieces = self.count_all_pieces()
+        for owner in Owner:
+            if owner != Owner.DRAGON:
+                owner_total = 0
+                for piece_type in PieceType:
+                    count = pieces.get(Piece(owner, piece_type))
+                    if count:
+                        owner_total += count
+                owner_towers = pieces.get(Piece(owner, PieceType.TOWER))
+                if (owner_towers and owner_total == owner_towers) or\
+                        (not owner_towers and owner_total < 4):
+                    defeated.append(owner)
+        return defeated
+
+    @property
+    def domination_winners(self):
+        defeated = self.defeated
+        if len(Owner) - len(defeated) == 2:
+            for candidate in Owner:
+                if candidate != Owner.DRAGON and candidate not in defeated:
+                    return {candidate}
+        return set()
+
+    @property
+    def tower_winners(self):
+        tower_winners = set()
+        for cell in self.tower_cells:
+            tower = self.get_piece(cell)
+            if tower and tower.piece_type == PieceType.TOWER:
+                dragons = 0
+                for neighbor in cell.neighbors:
+                    dragon = self.get_piece(neighbor)
+                    if not dragon or dragon.piece_type != PieceType.DRAGON:
+                        break
+                    dragons += 1
+                if dragons == 4:
+                    tower_winners.add(tower.owner)
+        return tower_winners
+
     def move(self, move, owner):
-        # TODO maybe do some validation?
-        # Don't necessarily want to call get_move_error again but it could be done
         if move.start == move.end:
             piece = self.get_piece(move.start)
             if not piece:
                 # Build tower
                 self.board[move.start.row][move.start.col] = Piece(owner, PieceType.TOWER)
+                winners = self.tower_winners
+                if winners:
+                    return winners
             else:
                 # Promote knight
                 self.board[move.start.row][move.start.col] = Piece(owner, PieceType.KNIGHT)
-        piece = self.board[move.start.row][move.start.col]
-        self.board[move.start.row][move.start.col] = None
-        self.board[move.end.row][move.end.col] = piece
-        # TODO if pawn or dragon, check for captures
+        else:
+            piece = self.board[move.start.row][move.start.col]
+            self.set_piece(move.start, None)
+            self.set_piece(move.end, piece)
+            if piece.piece_type == PieceType.PAWN or piece.piece_type == PieceType.DRAGON:
+                captures = self.capture(move.end)
+                if captures > 0:
+                    winners = self.domination_winners
+                    if winners:
+                        return winners
+        return set()
 
+def game_over(winners):
+    assert winners
+    winner_string = f'{winners[0].value} Player'
+    for winner in winners[1:]:
+        winner_string += f' and {winner.value} Player'
+    print(f'{winner_string} won the game!')
+    input('Press enter to exit.')
+    sys.exit(0)
 
 def main():
     board = Board(DEFAULT_BOARD)
     turn = Owner.BOTTOM
     error = None
+    winners = set()
     while True:
         print(board.labeled)
+        if winners:
+            game_over(winners)
         if error:
             print(error)
             error = None
@@ -451,9 +556,7 @@ def main():
         else:
             error = board.get_move_error(move, turn)
             if not error:
-                board.move(move, turn)
-                if not SOLO:
-                    turn = Owner.TOP if turn == Owner.BOTTOM else Owner.BOTTOM
+                winners = board.move(move, turn)
         print()
 
 
