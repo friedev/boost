@@ -1,11 +1,5 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
-# TODO core features
-# Dragons (symmetric placement)
-#   Random choice from worklist
-#   Place on one half of the map
-#   Mirror each placement
-
 # TODO stretch goals
 # Other game modes
 #   Don't assume default board parameters
@@ -24,6 +18,9 @@
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python
 
 import sys
+import math
+import random
+import os
 from enum import Enum
 
 
@@ -134,9 +131,9 @@ class Piece:
                 if piece_type == 'p':
                     self.piece_type = PieceType.PAWN
                 elif piece_type == 'k':
-                    self.piece_type = PieceType.PAWN
+                    self.piece_type = PieceType.KNIGHT
                 elif piece_type == 't':
-                    self.piece_type = PieceType.PAWN
+                    self.piece_type = PieceType.TOWER
                 else:
                     raise ValueError(f'Invalid piece type: {piece_type}')
         elif len(args) == 2 and isinstance(args[0], Owner) and isinstance(args[1], PieceType):
@@ -227,6 +224,7 @@ class Board:
         self.board = Board.empty()
         if len(args) == 1 and isinstance(args[0], str):
             self.load(args[0])
+            self.place_dragons(7)
 
     @staticmethod
     def empty():
@@ -250,19 +248,21 @@ class Board:
 
     @property
     def labeled(self):
-        string = ''
+        file_labels = '  '
+        for col in range(len(self.board[0])):
+            file_labels += f'{chr(col + 65)} '
+        string = file_labels + '\n'
         for row in range(len(self.board)):
-            string += f"{len(self.board) - row} "
+            row_string = f'{len(self.board) - row} '
+            string += row_string
             for col in range(len(self.board[row])):
                 if self.board[row][col]:
                     string += str(self.board[row][col])
                 else:
                     string += '.'
                 string += ' '
-            string += '\n'
-        string += "  "
-        for col in range(len(self.board[0])):
-            string += f"{chr(col + 65)} "
+            string += row_string + '\n'
+        string += file_labels
         return string
 
     @property
@@ -295,6 +295,32 @@ class Board:
             if col > 0:
                 row += 1
                 col = 0
+
+    def place_dragons(self, dragons):
+        max_row = len(self.board)
+        max_col = len(self.board[0])
+        middle_row = math.floor(len(self.board) / 2)
+        middle_col = math.floor(len(self.board[0]) / 2)
+        available_cells = []
+        for row in range(middle_row):
+            col_range = middle_col - 1 if row == middle_row else max_col
+            for col in range(col_range):
+                if not self.board[row][col]:
+                    available_cells.append(Cell(row, col))
+        remaining_dragons = dragons
+        # To place an odd number of dragons, we have to place one in the middle,
+        # since it's the only non-mirrored cell
+        if dragons % 2 != 0:
+            self.board[middle_row][middle_col] = Piece(Owner.DRAGON, PieceType.DRAGON)
+            remaining_dragons -= 1
+        while remaining_dragons > 0:
+            cell = random.choice(available_cells)
+            self.set_piece(cell, Piece(Owner.DRAGON, PieceType.DRAGON))
+            mirror_row = max_row - cell.row - 1
+            mirror_col = max_col - cell.col - 1
+            self.board[mirror_row][mirror_col] = Piece(Owner.DRAGON, PieceType.DRAGON)
+            available_cells.remove(cell)
+            remaining_dragons -= 2
 
     def in_bounds(self, cell):
         return cell.row >= 0 and\
@@ -412,7 +438,7 @@ class Board:
             error = f'There is no piece at {move.start} to move.'
         elif piece.piece_type == PieceType.DRAGON and not self.can_move_dragon(move.start, owner):
             error = f'To move the {piece.name} at {move.start}, you must have an adjacent piece.'
-        elif piece.owner != owner:
+        elif piece.owner != owner and piece.owner != Owner.DRAGON:
             error = f'You are not the owner of the {piece.name} at {move.start}.'
         elif piece.piece_type == PieceType.TOWER:
             error = 'Towers cannot move.'
@@ -443,7 +469,7 @@ class Board:
                 return True
         return False
 
-    def capture(self, cell):
+    def capture(self, cell, owner):
         piece = self.get_piece(cell)
         assert piece
         assert piece.piece_type == PieceType.PAWN or piece.piece_type == PieceType.DRAGON
@@ -451,7 +477,7 @@ class Board:
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
             if neighbor_piece\
-                    and neighbor_piece.owner != piece.owner\
+                    and neighbor_piece.owner != owner\
                     and neighbor_piece.owner != Owner.DRAGON\
                     and self.is_flanked(neighbor):
                 self.set_piece(neighbor, None)
@@ -506,9 +532,6 @@ class Board:
             if not piece:
                 # Build tower
                 self.board[move.start.row][move.start.col] = Piece(owner, PieceType.TOWER)
-                winners = self.tower_winners
-                if winners:
-                    return winners
             else:
                 # Promote knight
                 self.board[move.start.row][move.start.col] = Piece(owner, PieceType.KNIGHT)
@@ -517,12 +540,17 @@ class Board:
             self.set_piece(move.start, None)
             self.set_piece(move.end, piece)
             if piece.piece_type == PieceType.PAWN or piece.piece_type == PieceType.DRAGON:
-                captures = self.capture(move.end)
+                captures = self.capture(move.end, owner)
                 if captures > 0:
                     winners = self.domination_winners
                     if winners:
                         return winners
+                if piece.piece_type == PieceType.DRAGON:
+                    winners = self.tower_winners
+                    if winners:
+                        return winners
         return set()
+
 
 def game_over(winners):
     assert winners
@@ -533,19 +561,26 @@ def game_over(winners):
     input('Press enter to exit.')
     sys.exit(0)
 
+
 def main():
     board = Board(DEFAULT_BOARD)
     turn = Owner.BOTTOM
     error = None
     winners = set()
     while True:
+        os.system('clear')
         print(board.labeled)
         if winners:
-            game_over(winners)
+            game_over(list(winners))
         if error:
             print(error)
             error = None
-        move_input = input(f"{turn.value} Player's Move: ")
+        try:
+            move_input = input(f"{turn.value} Player's Move: ")
+        except KeyboardInterrupt:
+            # Don't print a traceback on KeyboardInterrupt
+            print()
+            sys.exit(0)
         if move_input == 'exit':
             sys.exit(0)
         try:
@@ -557,7 +592,8 @@ def main():
             error = board.get_move_error(move, turn)
             if not error:
                 winners = board.move(move, turn)
-        print()
+                if not winners and not SOLO:
+                    turn = Owner.TOP if turn == Owner.BOTTOM else Owner.BOTTOM
 
 
 if __name__ == '__main__':
