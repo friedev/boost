@@ -4,16 +4,23 @@
 # Other game modes
 #   Don't assume default board parameters
 # More players
-#   Need to make turn order fancier
+#   Refactor Owner (use player number, with None for dragons)
+#   Turn order: increment player number and mod by number of players
+#   Display player pieces with color rather than case
 #   Support alliances?
 # Basic AI
 #   Could do static eval based on piece counts
 #   Might want to cache pieces dict?
 # New piece types
+#   Refactor pieces; give each properties rather than hardcoding based on type
 #   Walls (for scenarios)
 #   New playable pieces (optionally enabled)
 # Tactical puzzles
 # CLI arguments to change game options (e.g. board, solo)
+# Instructions
+# Better error messages
+# Docstrings for all functions/classes
+# Generalize system to allow for any arbitrary rulesets (e.g. chess)
 # Consider adding color:
 # https://stackoverflow.com/questions/37340049/how-do-i-print-colored-output-to-the-terminal-in-python
 
@@ -22,6 +29,7 @@ import math
 import random
 import os
 from enum import Enum
+from termcolor import colored
 
 
 DEFAULT_BOARD = """
@@ -36,11 +44,26 @@ PPPP.PPPP
 pppp.pppp
 """
 
+QUICKSTART_BOARD = """
+..P...P..
+.PTP.PTP.
+..P...P..
+.........
+.........
+.........
+..p...p..
+.ptp.ptp.
+..p...p..
+"""
+
 DEFAULT_WIDTH = 9
 DEFAULT_HEIGHT = 9
 MAX_TOWERS = 2
+DRAGONS = 7
+MIN_PIECES = 4
 
 SOLO = False
+TOWER_VICTORY = True
 
 
 def distance(row1, col1, row2, col2):
@@ -224,7 +247,7 @@ class Board:
         self.board = Board.empty()
         if len(args) == 1 and isinstance(args[0], str):
             self.load(args[0])
-            self.place_dragons(7)
+            self.place_dragons(DRAGONS)
         self.history = [str(self)]
 
     @staticmethod
@@ -248,21 +271,34 @@ class Board:
         return string[:-1]
 
     @property
-    def labeled(self):
+    def pretty(self):
         file_labels = '  '
         for col in range(len(self.board[0])):
             file_labels += f'{chr(col + 65)} '
         string = file_labels + '\n'
+        horizontal_border = '─' * (2 * len(self.board[0]) - 1)
+        string += f" ┌{horizontal_border}┐\n"
         for row in range(len(self.board)):
-            row_string = f'{len(self.board) - row} '
-            string += row_string
+            row_string = f'{len(self.board) - row}'
+            string += row_string + '│'
             for col in range(len(self.board[row])):
-                if self.board[row][col]:
-                    string += str(self.board[row][col])
+                piece = self.board[row][col]
+                if piece:
+                    if piece.owner == Owner.TOP:
+                        color = 'red'
+                    elif piece.owner == Owner.BOTTOM:
+                        color = 'blue'
+                    else:
+                        color = 'magenta'
+                    string += colored(piece, color)
                 else:
                     string += '.'
-                string += ' '
+                if col < len(self.board[row]) - 1:
+                    string += ' '
+                else:
+                    string += '│'
             string += row_string + '\n'
+        string += f" └{horizontal_border}┘\n"
         string += file_labels
         return string
 
@@ -282,6 +318,18 @@ class Board:
                 cells.append(Cell(row, col))
         return cells
 
+    @property
+    def pieces(self):
+        pieces = {}
+        for cell in self.cells:
+            piece = self.get_piece(cell)
+            if piece:
+                if piece in pieces:
+                    pieces[piece] += 1
+                else:
+                    pieces[piece] = 1
+        return pieces
+
     def load(self, string):
         row, col = 0, 0
         for line in string.splitlines():
@@ -298,6 +346,9 @@ class Board:
                 col = 0
 
     def place_dragons(self, dragons):
+        assert dragons >= 0
+        if dragons == 0:
+            return
         max_row = len(self.board)
         max_col = len(self.board[0])
         middle_row = math.floor(len(self.board) / 2)
@@ -337,27 +388,6 @@ class Board:
     def set_piece(self, cell, piece):
         if self.in_bounds(cell):
             self.board[cell.row][cell.col] = piece
-
-    def count_all_pieces(self):
-        pieces = {}
-        for cell in self.cells:
-            piece = self.get_piece(cell)
-            if piece:
-                if piece in pieces:
-                    pieces[piece] += 1
-                else:
-                    pieces[piece] = 1
-        return pieces
-
-    def count_pieces(self, owner, piece_type):
-        count = 0
-        for cell in self.cells:
-            piece = self.get_piece(cell)
-            if piece and\
-                    (not owner or piece.owner == owner) and\
-                    (not piece_type or piece.piece_type == piece_type):
-                count += 1
-        return count
 
     def get_boost(self, cell):
         boost = 1
@@ -405,13 +435,14 @@ class Board:
             neighbor_piece = self.get_piece(neighbor)
             if not neighbor_piece or neighbor_piece.owner != owner:
                 return False
-        return self.count_pieces(owner, PieceType.TOWER) < MAX_TOWERS
+        owner_towers = self.pieces.get(Piece(owner, PieceType.TOWER), 0)
+        return owner_towers  < MAX_TOWERS
 
     def can_promote_knight(self, cell, owner):
         piece = self.get_piece(cell)
         if not piece or piece.owner != owner or piece.piece_type != PieceType.PAWN:
             return False
-        pieces = self.count_all_pieces()
+        pieces = self.pieces
         knight = Piece(owner, PieceType.KNIGHT)
         tower = Piece(owner, PieceType.TOWER)
         if knight in pieces and tower in pieces and pieces[knight] >= pieces[tower]:
@@ -488,7 +519,7 @@ class Board:
     @property
     def defeated(self):
         defeated = []
-        pieces = self.count_all_pieces()
+        pieces = self.pieces
         for owner in Owner:
             if owner != Owner.DRAGON:
                 owner_total = 0
@@ -498,7 +529,7 @@ class Board:
                         owner_total += count
                 owner_towers = pieces.get(Piece(owner, PieceType.TOWER))
                 if (owner_towers and owner_total == owner_towers) or\
-                        (not owner_towers and owner_total < 4):
+                        (not owner_towers and owner_total < MIN_PIECES):
                     defeated.append(owner)
         return defeated
 
@@ -546,7 +577,7 @@ class Board:
                     winners = self.domination_winners
                     if winners:
                         return winners
-                if piece.piece_type == PieceType.DRAGON:
+                if TOWER_VICTORY and piece.piece_type == PieceType.DRAGON:
                     winners = self.tower_winners
                     if winners:
                         return winners
@@ -567,6 +598,7 @@ def game_over(winners):
 def next_turn(owner):
     return Owner.TOP if owner == Owner.BOTTOM else Owner.BOTTOM
 
+
 def prev_turn(owner):
     # Valid for a 2-player game
     return next_turn(owner)
@@ -579,7 +611,7 @@ def main():
     winners = set()
     while True:
         os.system('clear')
-        print(board.labeled)
+        print(board.pretty)
         if winners:
             game_over(list(winners))
         print(error)
