@@ -1,7 +1,6 @@
-# pylint: disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
+# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # TODO core features
-# Basic pathfinding to ensure valid movement (A*)
 # Capturing
 # Victory conditions
 # Dragons (symmetric placement)
@@ -55,6 +54,33 @@ def distance(row1, col1, row2, col2):
 
 def cell_distance(cell1, cell2):
     return distance(cell1.row, cell1.col, cell2.row, cell2.col)
+
+
+# A generic list-based priority queue implementation
+class PriorityQueue:
+    def __init__(self):
+        self.queue = []
+
+    def __str__(self):
+        return ' '.join([str(i) for i in self.queue])
+
+    @property
+    def is_empty(self):
+        return len(self.queue) == 0
+
+    def insert(self, data):
+        self.queue.append(data)
+
+    def delete(self):
+        if self.is_empty:
+            raise IndexError
+        best = 0
+        for i in range(len(self.queue)):
+            if self.queue[i] < self.queue[best]:
+                best = i
+        item = self.queue[best]
+        del self.queue[best]
+        return item
 
 
 class Cell:
@@ -181,6 +207,22 @@ class Move:
         return cell_distance(self.start, self.end)
 
 
+class PathVertex:
+    def __init__(self, cell, path, heuristic):
+        self.cell = cell
+        self.path = path
+        self.heuristic = heuristic
+
+    def __lt__(self, other):
+        return self.heuristic < other.heuristic
+
+    def __gt__(self, other):
+        return other.__lt__(self)
+
+    def __eq__(self, other):
+        return self.heuristic == other.heuristic
+
+
 class Board:
     def __init__(self, *args):
         self.board = Board.empty()
@@ -281,10 +323,27 @@ class Board:
         return boost
 
     def path_exists(self, move):
-        # TODO implement some sort of graph search
-        # Later, for listing possible moves in GUI, add find_all_paths(cell, distance)
+        # A* with Manhattan distance heuristic (cell_distance)
         boost = self.get_boost(move.start)
-        return True
+        worklist = PriorityQueue()
+        worklist.insert(PathVertex(move.start, [], cell_distance(move.start, move.end)))
+
+        while not worklist.is_empty:
+            workitem = worklist.delete()
+
+            if len(workitem.path) > boost:
+                return False
+
+            if len(workitem.path) == boost and workitem.cell == move.end:
+                return True
+
+            for neighbor in workitem.cell.neighbors:
+                if not self.get_piece(neighbor) and not neighbor in workitem.path:
+                    worklist.insert(PathVertex(neighbor,\
+                            workitem.path + [neighbor],\
+                            len(workitem.path) + 1 + cell_distance(neighbor, move.end)))
+
+        return False
 
     def can_move_dragon(self, cell, owner):
         assert owner != Owner.DRAGON
@@ -340,7 +399,7 @@ class Board:
             error = f'You are not the owner of the {piece.name} at {move.start}.'
         elif piece.piece_type == PieceType.TOWER:
             error = 'Towers cannot move.'
-        elif move.distance != boost:
+        elif not self.path_exists(move):
             error = f'You must move this piece exactly {boost} cell(s).'
         elif not self.in_bounds(move.end):
             error = f'{move.end} is out of bounds.'
