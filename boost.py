@@ -29,7 +29,12 @@ import math
 import random
 import os
 from enum import Enum
-from termcolor import colored
+
+COLOR = True
+try:
+    from termcolor import colored
+except:
+    COLOR = False
 
 
 DEFAULT_BOARD = """
@@ -284,13 +289,16 @@ class Board:
             for col in range(len(self.board[row])):
                 piece = self.board[row][col]
                 if piece:
-                    if piece.owner == Owner.TOP:
-                        color = 'red'
-                    elif piece.owner == Owner.BOTTOM:
-                        color = 'blue'
+                    if COLOR:
+                        if piece.owner == Owner.TOP:
+                            color = 'red'
+                        elif piece.owner == Owner.BOTTOM:
+                            color = 'blue'
+                        else:
+                            color = 'green'
+                        string += colored(str(piece).upper(), color)
                     else:
-                        color = 'magenta'
-                    string += colored(piece, color)
+                        string += str(piece)
                 else:
                     string += '.'
                 if col < len(self.board[row]) - 1:
