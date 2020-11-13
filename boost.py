@@ -61,6 +61,8 @@ QUICKSTART_BOARD = """
 ..p...p..
 """
 
+EMPTY_CHAR='.'
+
 DEFAULT_WIDTH = 9
 DEFAULT_HEIGHT = 9
 MAX_TOWERS = 2
@@ -148,27 +150,13 @@ class Owner(Enum):
 
 
 class Piece:
-    def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], str) and len(args[0]) == 1:
-            piece_type = args[0].lower()
-            if piece_type == 'd':
-                self.owner = Owner.DRAGON
-                self.piece_type = PieceType.DRAGON
-            else:
-                self.owner = Owner.TOP if args[0].isupper() else Owner.BOTTOM
-                if piece_type == 'p':
-                    self.piece_type = PieceType.PAWN
-                elif piece_type == 'k':
-                    self.piece_type = PieceType.KNIGHT
-                elif piece_type == 't':
-                    self.piece_type = PieceType.TOWER
-                else:
-                    raise ValueError(f'Invalid piece type: {piece_type}')
-        elif len(args) == 2 and isinstance(args[0], Owner) and isinstance(args[1], PieceType):
-            self.owner = args[0]
-            self.piece_type = args[1]
-        else:
-            raise ValueError(f'Invalid arguments: {args}')
+    chr_to_piece = {}
+
+    def __init__(self, owner, piece_type):
+        assert isinstance(owner, Owner)
+        assert isinstance(piece_type, PieceType)
+        self.owner = owner
+        self.piece_type = piece_type
 
     def __str__(self):
         if self.piece_type == PieceType.DRAGON:
@@ -193,6 +181,15 @@ class Piece:
     @property
     def name(self):
         return self.piece_type.value
+
+    @staticmethod
+    def parse(string):
+        if not Piece.chr_to_piece:
+            for owner in Owner:
+                for piece_type in PieceType:
+                    piece = Piece(owner, piece_type)
+                    Piece.chr_to_piece[str(piece)] = piece
+        return Piece.chr_to_piece.get(string)
 
 
 class Move:
@@ -269,7 +266,7 @@ class Board:
                 if self.board[row][col]:
                     string += str(self.board[row][col])
                 else:
-                    string += '.'
+                    string += EMPTY_CHAR
                 string += ' '
             string += '\n'
         # Slice out trailing newline
@@ -300,7 +297,7 @@ class Board:
                     else:
                         string += str(piece)
                 else:
-                    string += '.'
+                    string += EMPTY_CHAR
                 if col < len(self.board[row]) - 1:
                     string += ' '
                 else:
@@ -342,11 +339,9 @@ class Board:
         row, col = 0, 0
         for line in string.splitlines():
             for char in line:
-                if char != ' ':
-                    if char == '.':
-                        self.board[row][col] = None
-                    else:
-                        self.board[row][col] = Piece(char)
+                piece = Piece.parse(char)
+                self.board[row][col] = piece
+                if piece or char == EMPTY_CHAR:
                     col += 1
             # Ignore blank lines
             if col > 0:
