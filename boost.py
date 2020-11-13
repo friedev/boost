@@ -182,6 +182,15 @@ class Piece:
     def name(self):
         return self.piece_type.value
 
+    @property
+    def color(self):
+        if self.owner == Owner.TOP:
+            return 'red'
+        elif self.owner == Owner.BOTTOM:
+            return 'blue'
+        else:
+            return 'green'
+
     @staticmethod
     def parse(string):
         if not Piece.chr_to_piece:
@@ -287,13 +296,7 @@ class Board:
                 piece = self.board[row][col]
                 if piece:
                     if COLOR:
-                        if piece.owner == Owner.TOP:
-                            color = 'red'
-                        elif piece.owner == Owner.BOTTOM:
-                            color = 'blue'
-                        else:
-                            color = 'green'
-                        string += colored(str(piece).upper(), color)
+                        string += colored(str(piece).upper(), piece.color)
                     else:
                         string += str(piece)
                 else:
