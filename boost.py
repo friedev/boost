@@ -418,7 +418,8 @@ class Board:
                 return True
 
             for neighbor in workitem.cell.neighbors:
-                if not self.get_piece(neighbor) and not neighbor in workitem.path:
+                piece = self.get_piece(neighbor)
+                if (not piece or neighbor == move.end) and not neighbor in workitem.path:
                     worklist.insert(PathVertex(neighbor,\
                             workitem.path + [neighbor],\
                             len(workitem.path) + 1 + cell_distance(neighbor, move.end)))
