@@ -14,7 +14,7 @@
 #   Change rulesets
 # Export move history and/or board history
 # CLI arguments to change game options (e.g. board, solo)
-# Instructions
+# Instructions (game rules, command help)
 # Better error messages
 # Docstrings for all functions/classes
 # Generalize system to allow for any arbitrary rulesets (e.g. chess)
@@ -735,7 +735,6 @@ def game_over(winners):
     winner_string = f'Player {winners[0]}'
     for winner in winners[1:]:
         winner_string += f' and Player {winner}'
-    print(f'{winner_string} won the game!')
     return f'{winner_string} won the game!'
 
 

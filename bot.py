@@ -15,7 +15,8 @@ class GameWrapper:
 
     @property
     def message(self):
-        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** (e.g. `/boost a1b2`)"
+        return f"```{self.game.board.pretty}```" +\
+                f"**Player {self.game.turn}'s Move** (e.g. `/boost a1b2`)"
 
 HELP = '''**Commands:**
 - `/boost`: view the current state of the game board
@@ -80,4 +81,8 @@ async def on_message(message):
             output += f"**Player {game.turn}'s Move** (e.g. `/boost a1b2`)"
         await message.channel.send(output)
 
-client.run('Nzc5NDE5MTM1MjU5ODM2NDU3.X7gQog.Ctt_1h81-6K41hTA5GoPGuIObCA')
+# Read Discord bot token as first command line argument
+if len(sys.argv) < 2:
+    print('Please enter your Discord bot token as a command line argument')
+    sys.exit(1)
+client.run(sys.argv[1])
