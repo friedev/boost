@@ -1,13 +1,6 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # TODO stretch goals
-# Other game modes
-#   Don't assume default board parameters
-# More players
-#   Refactor Owner (use player number, with None for dragons)
-#   Turn order: increment player number and mod by number of players
-#   Display player pieces with color rather than case
-#   Support alliances?
 # Basic AI
 #   Could do static eval based on piece counts
 #   Might want to cache pieces dict?
@@ -65,8 +58,6 @@ P2_BOARD_MINI = """
 .  .  .  .  .  .  .
 .  .  .  .  .  .  .
 .  .  .  .  .  .  .
-.  .  .  .  .  .  .
-.  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .
 """
 
@@ -118,8 +109,6 @@ P2 .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .  .  P4
 """
 
-DEFAULT_BOARD = P2_BOARD
-
 class Ruleset:
     def __init__(self, board_string, width, height, players, dragons):
         assert board_string
@@ -138,10 +127,13 @@ class Ruleset:
         return players + 1
 
     def create_board(self):
-        return Board(board_string, width, height, dragons)
+        return Board(self.width, self.height, self.board_string, self.dragons)
+
+    def create_game(self):
+        return Game(self.create_board(), self.players)
 
 class Rulesets(Enum):
-    DEFAULT = Ruleset(P2_BOARD, 9, 9, 2, 7)
+    P2 = Ruleset(P2_BOARD, 9, 9, 2, 7)
     SOLO = Ruleset(SOLO_BOARD, 9, 9, 1, 7)
     P2_DRAGONLESS = Ruleset(P2_BOARD, 9, 9, 2, 0)
     P2_MINI = Ruleset(P2_BOARD_MINI, 7, 7, 2, 7)
@@ -151,12 +143,10 @@ class Rulesets(Enum):
     P4 = Ruleset(P4_BOARD, 9, 9, 4, 7)
     P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL, 9, 9, 4, 7)
 
-EMPTY_CELL = '. '
+DEFAULT_RULESET = Rulesets.P4.value
 
-DEFAULT_WIDTH = 9
-DEFAULT_HEIGHT = 9
-# This is the number of players + 1 for the Dragon owner 0
-DEFAULT_OWNERS = 3
+EMPTY_CELL_SHORT = '.'
+EMPTY_CELL_LONG = '. '
 
 DRAGON_OWNER = 0
 OWNER_COLORS = ['green', 'red', 'blue', 'yellow', 'magenta', 'cyan', 'white']
@@ -208,18 +198,9 @@ class PriorityQueue:
 
 
 class Cell:
-    def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], str):
-            self.col = ord(args[0][0].upper()) - 65
-            self.row = DEFAULT_HEIGHT - int(args[0][1])
-        elif len(args) == 2 and isinstance(args[0], int) and isinstance(args[1], int):
-            self.row = args[0]
-            self.col = args[1]
-        else:
-            raise ValueError(f'Invalid arguments: {args}')
-
-    def __str__(self):
-        return f'{chr(self.col + 65)}{str(DEFAULT_HEIGHT - self.row)}'
+    def __init__(self, row, col):
+        self.row = row
+        self.col = col
 
     def __eq__(self, other):
         if isinstance(other, Cell):
@@ -287,40 +268,16 @@ class Piece:
 
     @staticmethod
     def parse(string):
-        if not Piece.chr_to_piece:
-            for owner in range(DEFAULT_OWNERS):
-                for piece_type in PieceTypes:
-                    piece = Piece(owner, piece_type)
-                    if piece.valid:
-                        Piece.chr_to_piece[str(piece)] = piece
-        return Piece.chr_to_piece.get(string)
+        for piece_type in PieceTypes:
+            if piece_type.value.symbol == string[0]:
+                return Piece(int(string[1]), piece_type)
+        return None
 
 
 class Move:
-    def __init__(self, *args):
-        # TODO better input sanitization/parsing/recovery
-        # ew dry violation
-        if len(args) == 4 and\
-                isinstance(args[0], int) and\
-                isinstance(args[1], int) and\
-                isinstance(args[2], int) and\
-                isinstance(args[3], int):
-            self.start = Cell(args[0], args[1])
-            self.end = Cell(args[2], args[3])
-        elif len(args) == 2 and isinstance(args[0], Cell) and isinstance(args[1], Cell):
-            self.start = args[0]
-            self.end = args[1]
-        elif len(args) == 1 and isinstance(args[0], str) and len(args[0]) == 4:
-            self.start = Cell(args[0][:2])
-            self.end = Cell(args[0][2:])
-        elif len(args) == 1 and isinstance(args[0], str) and len(args[0]) == 2:
-            self.start = Cell(args[0])
-            self.end = Cell(args[0])
-        else:
-            raise ValueError(f'Invalid arguments: {args}')
-
-    def __str__(self):
-        return str(self.start) + str(self.end)
+    def __init__(self, start, end=None):
+        self.start = start
+        self.end = end if end else start
 
     def __eq__(self, other):
         if isinstance(other, Move):
@@ -349,18 +306,22 @@ class PathVertex:
 
 
 class Board:
-    def __init__(self, *args):
-        self.board = Board.empty()
-        if len(args) == 1 and isinstance(args[0], str):
-            self.load(args[0])
-            self.place_dragons(DRAGONS)
+    def __init__(self, width, height, string='', dragons=0):
+        self.board = Board.empty(width, height)
+        self.load(string)
+        self.place_dragons(dragons)
+
+    @property
+    def width(self):
+        return len(self.board[0])
+
+    @property
+    def height(self):
+        return len(self.board)
 
     @staticmethod
-    def empty():
-        return [[None for row in range(DEFAULT_HEIGHT)] for col in range(DEFAULT_WIDTH)]
-
-    def clear(self):
-        self.board = Board.empty()
+    def empty(width, height):
+        return [[None for row in range(height)] for col in range(width)]
 
     def __str__(self):
         string = ''
@@ -369,7 +330,7 @@ class Board:
                 if self.board[row][col]:
                     string += str(self.board[row][col])
                 else:
-                    string += EMPTY_CELL
+                    string += EMPTY_CELL_LONG
                 string += ' '
             string += '\n'
         # Slice out trailing newline
@@ -378,10 +339,11 @@ class Board:
     @property
     def pretty(self):
         file_labels = '  '
+        cell_width = 2 if COLOR else 3
         for col in range(len(self.board[0])):
-            file_labels += f'{chr(col + 65)}  '
+            file_labels += f'{chr(col + 65)}' + (cell_width - 1) * ' '
         string = file_labels + '\n'
-        horizontal_border = '─' * (3 * len(self.board[0]) - 1)
+        horizontal_border = '─' * (cell_width * len(self.board[0]) - 1)
         string += f" ┌{horizontal_border}┐\n"
         for row in range(len(self.board)):
             row_string = f'{len(self.board) - row}'
@@ -394,7 +356,10 @@ class Board:
                     else:
                         string += str(piece)
                 else:
-                    string += EMPTY_CELL
+                    if COLOR:
+                        string += EMPTY_CELL_SHORT
+                    else:
+                        string += EMPTY_CELL_LONG
                 if col < len(self.board[row]) - 1:
                     string += ' '
                 else:
@@ -432,21 +397,46 @@ class Board:
                     pieces[piece] = 1
         return pieces
 
+    def parse_cell(self, string):
+        row_string = string[0]
+        col_string = string[1]
+        row = self.height - int(col_string)
+        col = ord(row_string.upper()) - 65
+        return Cell(row, col)
+
+    def format_cell(self, cell):
+        return f'{chr(cell.col + 65)}{str(self.height - cell.row)}'
+
+    def parse_move(self, string):
+        start = self.parse_cell(string[0:2])
+        end = start
+        if len(string) == 4:
+            end = self.parse_cell(string[2:4])
+        return Move(start, end)
+
+    def format_move(self, move):
+        return self.format_cell(move.start) + self.format_cell(move.end)
+
     def load(self, string):
         row, col = 0, 0
+        self.owners = 0
         for line in string.splitlines():
             if row < len(self.board):
-                for (piece_type, owner) in zip(line[0::], line[1::]):
+                for (piece_type_string, owner_string) in zip(line[0::], line[1::]):
                     if col < len(self.board[row]):
-                        piece_string = str(piece_type) + str(owner)
+                        piece_string = piece_type_string + owner_string
                         piece = Piece.parse(piece_string)
                         self.board[row][col] = piece
-                        if piece or piece_string == EMPTY_CELL:
+                        if piece:
+                            if piece.owner > self.owners:
+                                self.owners = piece.owner
+                        if piece or piece_string == EMPTY_CELL_LONG:
                             col += 1
             # Ignore blank lines
             if col > 0:
                 row += 1
                 col = 0
+        self.owners += 1
 
     def place_dragons(self, dragons):
         assert dragons >= 0
@@ -479,6 +469,7 @@ class Board:
             remaining_dragons -= 2
 
     def in_bounds(self, cell):
+        assert cell
         return cell.row >= 0 and\
                 cell.row < len(self.board) and\
                 cell.col >= 0 and\
@@ -550,7 +541,9 @@ class Board:
         pieces = self.pieces
         knight = Piece(owner, PieceTypes.KNIGHT)
         tower = Piece(owner, PieceTypes.TOWER)
-        if knight in pieces and tower in pieces and pieces[knight] >= pieces[tower] * KNIGHTS_PER_TOWER:
+        if knight in pieces and\
+                tower in pieces\
+                and pieces[knight] >= pieces[tower] * KNIGHTS_PER_TOWER:
             return False
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
@@ -572,17 +565,17 @@ class Board:
                 return ''
             return 'You cannot build a tower here nor promote a pawn to a knight here.'
         if not piece:
-            error = f'There is no piece at {move.start} to move.'
+            error = f'There is no piece at {self.format_cell(move.start)} to move.'
         elif piece.piece_type == PieceTypes.DRAGON and not self.can_move_dragon(move.start, owner):
-            error = f'To move the {piece.name} at {move.start}, you must have an adjacent piece.'
+            error = f'To move the {piece.name} at {self.format_cell(move.start)}, you must have an adjacent piece.'
         elif piece.owner != owner and piece.owner != DRAGON_OWNER:
-            error = f'You are not the owner of the {piece.name} at {move.start}.'
+            error = f'You are not the owner of the {piece.name} at {self.format_cell(move.start)}.'
         elif piece.piece_type == PieceTypes.TOWER:
             error = 'Towers cannot move.'
         elif not self.path_exists(move):
             error = f'You must move this piece exactly {boost} cell(s).'
         elif not self.in_bounds(move.end):
-            error = f'{move.end} is out of bounds.'
+            error = f'{self.format_cell(move.end)} is out of bounds.'
         elif destination and piece.piece_type != PieceTypes.KNIGHT:
             error = f'A {piece.name} cannot capture pieces directly.'
         elif destination and destination.owner == owner:
@@ -625,7 +618,7 @@ class Board:
     def defeated(self):
         defeated = []
         pieces = self.pieces
-        for owner in range(DEFAULT_OWNERS):
+        for owner in range(self.owners):
             if owner != DRAGON_OWNER:
                 owner_total = 0
                 for piece_type in PieceTypes:
@@ -641,8 +634,8 @@ class Board:
     @property
     def domination_winners(self):
         defeated = self.defeated
-        if DEFAULT_OWNERS - len(defeated) == 2:
-            for candidate in range(DEFAULT_OWNERS):
+        if self.owners - len(defeated) == 2:
+            for candidate in range(self.owners):
                 if candidate != DRAGON_OWNER and candidate not in defeated:
                     return {candidate}
         return set()
@@ -690,7 +683,7 @@ class Board:
 
 
 class Game:
-    def __init__(self, board, players, turn):
+    def __init__(self, board, players, turn=1):
         self.board = board
         self.players = players
         self.turn = turn
@@ -716,13 +709,8 @@ class Game:
             self.history.pop()
             self.board.load(self.history[-1])
             self.prev_turn()
-            return None
-        else:
-            return 'There are no previous moves to undo.'
-
-    def reset(self):
-        self.board = Board(DEFAULT_BOARD)
-        self.turn = 1
+            return ''
+        return 'There are no previous moves to undo.'
 
 
 def game_over(winners):
@@ -735,7 +723,7 @@ def game_over(winners):
 
 
 def main():
-    game = Game(Board(DEFAULT_BOARD), DEFAULT_OWNERS - 1, 1)
+    game = DEFAULT_RULESET.create_game()
     error = ''
     winners = set()
     while True:
@@ -757,11 +745,11 @@ def main():
         if move_input == 'exit':
             sys.exit(0)
         elif move_input == 'undo':
-            game.undo()
+            error = game.undo()
         else:
             try:
-                move = Move(move_input)
-            except ValueError:
+                move = game.board.parse_move(move_input)
+            except (ValueError, IndexError):
                 error = 'Bad move format. Moves should be given in chess notation.\n'\
                         + 'e.g. "a1b2" to move from A1 to B2.'
             else:

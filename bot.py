@@ -1,7 +1,21 @@
+# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring,unused-wildcard-import
+
 import discord
 from boost import *
 
 client = discord.Client()
+
+class GameWrapper:
+    def __init__(self, ruleset):
+        self.ruleset = ruleset
+        self.game = ruleset.create_game()
+
+    def reset(self):
+        self.game = self.ruleset.create_game()
+
+    @property
+    def message(self):
+        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** (e.g. `/boost a1b2`)"
 
 HELP = '''**Commands:**
 - `/boost`: view the current state of the game board
@@ -11,7 +25,7 @@ HELP = '''**Commands:**
 '''
 
 COLOR = False
-game = Game(Board(DEFAULT_BOARD), DEFAULT_OWNERS - 1, 1)
+wrapper = GameWrapper(Rulesets.DEFAULT.value)
 
 @client.event
 async def on_ready():
@@ -25,19 +39,20 @@ async def on_message(message):
     if message.content.startswith('/boost'):
         data = message.content.split()
         if len(data) == 1:
-            await message.channel.send(f"```{game.board.pretty}```**Player {game.turn}'s Move** (e.g. `/boost a1b2`)")
+            await message.channel.send(wrapper.message)
             return
 
         move_input = data[1]
         if move_input == 'new':
-            game.reset()
-            await message.channel.send(f"```{game.board.pretty}```**Player {game.turn}'s Move** (e.g. `/boost a1b2`)")
+            wrapper.reset()
+            await message.channel.send(wrapper.message)
             return
 
         if move_input == 'help':
             await message.channel.send(HELP)
             return
 
+        game = wrapper.game
         winners = set()
         if move_input == 'undo':
             error = game.undo()
@@ -47,7 +62,8 @@ async def on_message(message):
             try:
                 move = Move(move_input)
             except ValueError:
-                await message.channel.send('Unrecognized command or move. For a list of commands, run `/boost help`.')
+                await message.channel.send(\
+                        'Unrecognized command or move. For a list of commands, run `/boost help`.')
                 return
             else:
                 error = game.get_move_error(move)
