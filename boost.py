@@ -30,7 +30,7 @@ import random
 import os
 from enum import Enum
 
-COLOR = True
+COLOR = False
 try:
     from termcolor import colored
 except:
@@ -191,13 +191,18 @@ class Piece:
         else:
             return 'green'
 
+    @property
+    def valid(self):
+        return (self.piece_type == PieceType.DRAGON) == (self.owner == Owner.DRAGON)
+
     @staticmethod
     def parse(string):
         if not Piece.chr_to_piece:
             for owner in Owner:
                 for piece_type in PieceType:
                     piece = Piece(owner, piece_type)
-                    Piece.chr_to_piece[str(piece)] = piece
+                    if piece.valid:
+                        Piece.chr_to_piece[str(piece)] = piece
         return Piece.chr_to_piece.get(string)
 
 
@@ -341,11 +346,13 @@ class Board:
     def load(self, string):
         row, col = 0, 0
         for line in string.splitlines():
-            for char in line:
-                piece = Piece.parse(char)
-                self.board[row][col] = piece
-                if piece or char == EMPTY_CHAR:
-                    col += 1
+            if row < len(self.board):
+                for char in line:
+                    if col < len(self.board[row]):
+                        piece = Piece.parse(char)
+                        self.board[row][col] = piece
+                        if piece or char == EMPTY_CHAR:
+                            col += 1
             # Ignore blank lines
             if col > 0:
                 row += 1
@@ -592,39 +599,52 @@ class Board:
         return set()
 
 
+class Game:
+    def __init__(self, board, turn):
+        self.board = board
+        self.turn = turn
+
+    def next_turn(self):
+        self.turn = Owner.TOP if self.turn == Owner.BOTTOM else Owner.BOTTOM
+
+    def prev_turn(self):
+        # Valid for a 2-player game
+        self.next_turn()
+
+    def undo(self):
+        if len(self.board.history) > 1:
+            self.board.history.pop()
+            self.board.load(self.board.history[-1])
+            self.prev_turn()
+
+    def reset(self):
+        self.board = Board(DEFAULT_BOARD)
+        self.turn = Owner.BOTTOM
+
+
 def game_over(winners):
     assert winners
     winner_string = f'{winners[0].value} Player'
     for winner in winners[1:]:
         winner_string += f' and {winner.value} Player'
-    print(f'{winner_string} won the game!')
-    input('Press enter to exit.')
-    sys.exit(0)
-
-
-def next_turn(owner):
-    return Owner.TOP if owner == Owner.BOTTOM else Owner.BOTTOM
-
-
-def prev_turn(owner):
-    # Valid for a 2-player game
-    return next_turn(owner)
+    return f'{winner_string} won the game!'
 
 
 def main():
-    board = Board(DEFAULT_BOARD)
-    turn = Owner.BOTTOM
+    game = Game(Board(DEFAULT_BOARD), Owner.BOTTOM)
     error = ''
     winners = set()
     while True:
         os.system('clear')
-        print(board.pretty)
+        print(game.board.pretty)
         if winners:
-            game_over(list(winners))
+            print(game_over(list(winners)))
+            input('Press enter to exit.')
+            sys.exit(0)
         print(error)
         error = ''
         try:
-            move_input = input(f"{turn.value} Player's Move: ")
+            move_input = input(f"{game.turn.value} Player's Move: ")
         except KeyboardInterrupt:
             # Don't print a traceback on KeyboardInterrupt
             print()
@@ -632,10 +652,8 @@ def main():
         if move_input == 'exit':
             sys.exit(0)
         elif move_input == 'undo':
-            if len(board.history) > 1:
-                board.history.pop()
-                board.load(board.history[-1])
-                turn = prev_turn(turn)
+            if len(game.board.history) > 1:
+                game.undo()
             else:
                 error = 'There are no previous moves to undo.'
         else:
@@ -645,11 +663,11 @@ def main():
                 error = 'Bad move format. Moves should be given in chess notation.\n'\
                         + 'e.g. "a1b2" to move from A1 to B2.'
             else:
-                error = board.get_move_error(move, turn)
+                error = game.board.get_move_error(move, game.turn)
                 if not error:
-                    winners = board.move(move, turn)
+                    winners = game.board.move(move, game.turn)
                     if not winners and not SOLO:
-                        turn = next_turn(turn)
+                        game.next_turn()
 
 
 if __name__ == '__main__':
