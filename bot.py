@@ -25,7 +25,7 @@ HELP = '''**Commands:**
 '''
 
 COLOR = False
-wrapper = GameWrapper(Rulesets.DEFAULT.value)
+wrapper = GameWrapper(DEFAULT_RULESET)
 
 @client.event
 async def on_ready():
@@ -60,7 +60,7 @@ async def on_message(message):
                 await message.channel.send(error)
         else:
             try:
-                move = Move(move_input)
+                move = game.board.parse_move(move_input)
             except ValueError:
                 await message.channel.send(\
                         'Unrecognized command or move. For a list of commands, run `/boost help`.')
