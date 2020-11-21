@@ -31,7 +31,7 @@ import random
 import os
 from enum import Enum
 
-COLOR = True
+COLOR = False
 try:
     from termcolor import colored
 except ImportError:
@@ -154,7 +154,7 @@ class Rulesets(Enum):
     P4 = Ruleset(P4_BOARD, 9, 9, 4, 7)
     P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL, 9, 9, 4, 7)
 
-EMPTY_CHAR = '.'
+EMPTY_CELL = '. '
 
 DEFAULT_WIDTH = 9
 DEFAULT_HEIGHT = 9
@@ -373,7 +373,7 @@ class Board:
                 if self.board[row][col]:
                     string += str(self.board[row][col])
                 else:
-                    string += EMPTY_CHAR
+                    string += EMPTY_CELL
                 string += ' '
             string += '\n'
         # Slice out trailing newline
@@ -383,9 +383,9 @@ class Board:
     def pretty(self):
         file_labels = '  '
         for col in range(len(self.board[0])):
-            file_labels += f'{chr(col + 65)} '
+            file_labels += f'{chr(col + 65)}  '
         string = file_labels + '\n'
-        horizontal_border = '─' * (2 * len(self.board[0]) - 1)
+        horizontal_border = '─' * (3 * len(self.board[0]) - 1)
         string += f" ┌{horizontal_border}┐\n"
         for row in range(len(self.board)):
             row_string = f'{len(self.board) - row}'
@@ -398,7 +398,7 @@ class Board:
                     else:
                         string += str(piece)
                 else:
-                    string += EMPTY_CHAR
+                    string += EMPTY_CELL
                 if col < len(self.board[row]) - 1:
                     string += ' '
                 else:
@@ -442,9 +442,10 @@ class Board:
             if row < len(self.board):
                 for (piece_type, owner) in zip(line[0::], line[1::]):
                     if col < len(self.board[row]):
-                        piece = Piece.parse(str(piece_type) + str(owner))
+                        piece_string = str(piece_type) + str(owner)
+                        piece = Piece.parse(piece_string)
                         self.board[row][col] = piece
-                        if piece or piece_type == EMPTY_CHAR:
+                        if piece or piece_string == EMPTY_CELL:
                             col += 1
             # Ignore blank lines
             if col > 0:
@@ -713,7 +714,7 @@ class Game:
 
     def reset(self):
         self.board = Board(DEFAULT_BOARD)
-        self.turn = Owner.BOTTOM
+        self.turn = 1
 
 
 def game_over(winners):
