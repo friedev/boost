@@ -40,10 +40,9 @@ async def on_message(message):
 
         winners = set()
         if move_input == 'undo':
-            if len(game.board.history) > 1:
-                game.undo()
-            else:
-                await message.channel.send('There are no previous moves to undo.')
+            error = game.undo()
+            if error:
+                await message.channel.send(error)
         else:
             try:
                 move = Move(move_input)
@@ -51,13 +50,11 @@ async def on_message(message):
                 await message.channel.send('Unrecognized command or move. For a list of commands, run `/boost help`.')
                 return
             else:
-                error = game.board.get_move_error(move, game.turn)
+                error = game.get_move_error(move)
                 if error:
                     await message.channel.send(error)
                     return
-                winners = game.board.move(move, game.turn)
-                if not winners and not SOLO:
-                    game.next_turn()
+                winners = game.move(move)
         output = f"```{game.board.pretty}```"
         if winners:
             output += game_over(list(winners))

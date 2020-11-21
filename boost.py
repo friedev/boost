@@ -1,9 +1,6 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # TODO stretch goals
-# Split Board into Game class
-#   Game stores history, number of players, current turn, etc.
-#   Board basically becomes immutable
 # Other game modes
 #   Don't assume default board parameters
 # More players
@@ -357,7 +354,6 @@ class Board:
         if len(args) == 1 and isinstance(args[0], str):
             self.load(args[0])
             self.place_dragons(DRAGONS)
-        self.history = [str(self)]
 
     @staticmethod
     def empty():
@@ -689,7 +685,6 @@ class Board:
                     winners = self.tower_winners
                     if winners:
                         return winners
-        self.history.append(str(self))
         return set()
 
 
@@ -698,6 +693,7 @@ class Game:
         self.board = board
         self.players = players
         self.turn = turn
+        self.history = [str(board)]
 
     def next_turn(self):
         self.turn = self.turn + 1 if self.turn < self.players else 1
@@ -705,11 +701,23 @@ class Game:
     def prev_turn(self):
         self.turn = self.turn - 1 if self.turn > 1 else self.players
 
+    def get_move_error(self, move):
+        return self.board.get_move_error(move, self.turn)
+
+    def move(self, move):
+        winners = self.board.move(move, self.turn)
+        self.next_turn()
+        self.history.append(str(self.board))
+        return winners
+
     def undo(self):
-        if len(self.board.history) > 1:
-            self.board.history.pop()
-            self.board.load(self.board.history[-1])
+        if len(self.history) > 1:
+            self.history.pop()
+            self.board.load(self.history[-1])
             self.prev_turn()
+            return None
+        else:
+            return 'There are no previous moves to undo.'
 
     def reset(self):
         self.board = Board(DEFAULT_BOARD)
@@ -748,10 +756,7 @@ def main():
         if move_input == 'exit':
             sys.exit(0)
         elif move_input == 'undo':
-            if len(game.board.history) > 1:
-                game.undo()
-            else:
-                error = 'There are no previous moves to undo.'
+            game.undo()
         else:
             try:
                 move = Move(move_input)
@@ -759,11 +764,9 @@ def main():
                 error = 'Bad move format. Moves should be given in chess notation.\n'\
                         + 'e.g. "a1b2" to move from A1 to B2.'
             else:
-                error = game.board.get_move_error(move, game.turn)
+                error = game.get_move_error(move)
                 if not error:
-                    winners = game.board.move(move, game.turn)
-                    if not winners:
-                        game.next_turn()
+                    winners = game.move(move)
 
 
 if __name__ == '__main__':
