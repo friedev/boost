@@ -227,8 +227,6 @@ class PieceTypes(Enum):
 
 
 class Piece:
-    chr_to_piece = {}
-
     def __init__(self, owner, piece_type):
         # assert isinstance(owner, int)
         # assert owner >= 0
@@ -337,13 +335,16 @@ class Board:
         return string[:-1]
 
     @property
+    def cell_width(self):
+        return 2 if COLOR or self.owners <= 3 else 3
+
+    @property
     def pretty(self):
         file_labels = '  '
-        cell_width = 2 if COLOR else 3
         for col in range(len(self.board[0])):
-            file_labels += f'{chr(col + 65)}' + (cell_width - 1) * ' '
+            file_labels += f'{chr(col + 65)}' + (self.cell_width - 1) * ' '
         string = file_labels + '\n'
-        horizontal_border = '─' * (cell_width * len(self.board[0]) - 1)
+        horizontal_border = '─' * (self.cell_width * len(self.board[0]) - 1)
         string += f" ┌{horizontal_border}┐\n"
         for row in range(len(self.board)):
             row_string = f'{len(self.board) - row}'
@@ -354,9 +355,9 @@ class Board:
                     if COLOR:
                         string += colored(piece.symbol.upper(), piece.color)
                     else:
-                        string += str(piece)
+                        string += self.format_piece(piece)
                 else:
-                    if COLOR:
+                    if self.cell_width == 2:
                         string += EMPTY_CELL_SHORT
                     else:
                         string += EMPTY_CELL_LONG
@@ -417,6 +418,12 @@ class Board:
     def format_move(self, move):
         return self.format_cell(move.start) + self.format_cell(move.end)
 
+    def format_piece(self, piece):
+        if self.owners > 3:
+            return str(piece)
+        symbol = piece.piece_type.value.symbol
+        return symbol.lower() if piece.owner == 1 else symbol.upper()
+
     def load(self, string):
         row, col = 0, 0
         self.owners = 0
@@ -442,13 +449,11 @@ class Board:
         assert dragons >= 0
         if dragons == 0:
             return
-        max_row = len(self.board)
-        max_col = len(self.board[0])
-        middle_row = math.floor(len(self.board) / 2)
-        middle_col = math.floor(len(self.board[0]) / 2)
+        middle_row = math.floor(self.height / 2)
+        middle_col = math.floor(self.width / 2)
         available_cells = []
         for row in range(middle_row):
-            col_range = middle_col - 1 if row == middle_row else max_col
+            col_range = middle_col - 1 if row == middle_row else self.width
             for col in range(col_range):
                 if not self.board[row][col]:
                     available_cells.append(Cell(row, col))
@@ -457,16 +462,21 @@ class Board:
         # since it's the only non-mirrored cell
         dragon = Piece(DRAGON_OWNER, PieceTypes.DRAGON)
         if dragons % 2 != 0:
+            if self.board[middle_row][middle_col]:
+                raise ValueError(\
+                        'Cannot place an odd number of dragons on this board' +\
+                        '(center must be unoccupied)')
             self.board[middle_row][middle_col] = dragon
             remaining_dragons -= 1
         while remaining_dragons > 0:
             cell = random.choice(available_cells)
-            self.set_piece(cell, dragon)
-            mirror_row = max_row - cell.row - 1
-            mirror_col = max_col - cell.col - 1
-            self.board[mirror_row][mirror_col] = dragon
             available_cells.remove(cell)
-            remaining_dragons -= 2
+            mirror_row = self.height - cell.row - 1
+            mirror_col = self.width - cell.col - 1
+            if not self.board[mirror_row][mirror_col]:
+                self.set_piece(cell, dragon)
+                self.board[mirror_row][mirror_col] = dragon
+                remaining_dragons -= 2
 
     def in_bounds(self, cell):
         assert cell
@@ -566,8 +576,10 @@ class Board:
             return 'You cannot build a tower here nor promote a pawn to a knight here.'
         if not piece:
             error = f'There is no piece at {self.format_cell(move.start)} to move.'
-        elif piece.piece_type == PieceTypes.DRAGON and not self.can_move_dragon(move.start, owner):
-            error = f'To move the {piece.name} at {self.format_cell(move.start)}, you must have an adjacent piece.'
+        elif piece.piece_type == PieceTypes.DRAGON and\
+                not self.can_move_dragon(move.start, owner):
+            error = f'To move the {piece.name} at {self.format_cell(move.start)}, ' +\
+                    'you must have an adjacent piece.'
         elif piece.owner != owner and piece.owner != DRAGON_OWNER:
             error = f'You are not the owner of the {piece.name} at {self.format_cell(move.start)}.'
         elif piece.piece_type == PieceTypes.TOWER:
