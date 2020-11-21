@@ -21,6 +21,7 @@ HELP = '''**Commands:**
 - `/boost`: view the current state of the game board
 - `/boost new`: start a new game
 - `/boost a1b2`: move a piece from A1 to B2 (for example)
+- `/boost d2`: build a tower or promote a pawn at D2 (for example)
 - `/boost undo`: undo the last move
 '''
 

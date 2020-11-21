@@ -8,12 +8,17 @@
 #   Refactor pieces; give each properties rather than hardcoding based on type
 #   Walls (for scenarios)
 #   New playable pieces (optionally enabled)
-# Tactical puzzles
+# Discord functionality
+#   Register players
+#   Ping players on their turn
+#   Change rulesets
+# Export move history and/or board history
 # CLI arguments to change game options (e.g. board, solo)
 # Instructions
 # Better error messages
 # Docstrings for all functions/classes
 # Generalize system to allow for any arbitrary rulesets (e.g. chess)
+# Debug powers (ignore movement rules)
 
 import sys
 import math
@@ -143,7 +148,7 @@ class Rulesets(Enum):
     P4 = Ruleset(P4_BOARD, 9, 9, 4, 7)
     P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL, 9, 9, 4, 7)
 
-DEFAULT_RULESET = Rulesets.P4.value
+DEFAULT_RULESET = Rulesets.P2.value
 
 EMPTY_CELL_SHORT = '.'
 EMPTY_CELL_LONG = '. '
