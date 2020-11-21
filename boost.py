@@ -693,39 +693,54 @@ class Board:
         return set()
 
 
+class Game:
+    def __init__(self, board, players, turn):
+        self.board = board
+        self.players = players
+        self.turn = turn
+
+    def next_turn(self):
+        self.turn = self.turn + 1 if self.turn < self.players else 1
+
+    def prev_turn(self):
+        self.turn = self.turn - 1 if self.turn > 1 else self.players
+
+    def undo(self):
+        if len(self.board.history) > 1:
+            self.board.history.pop()
+            self.board.load(self.board.history[-1])
+            self.prev_turn()
+
+    def reset(self):
+        self.board = Board(DEFAULT_BOARD)
+        self.turn = Owner.BOTTOM
+
+
 def game_over(winners):
     assert winners
     winner_string = f'Player {winners[0]}'
     for winner in winners[1:]:
         winner_string += f' and Player {winner}'
     print(f'{winner_string} won the game!')
-    input('Press enter to exit.')
-    sys.exit(0)
-
-
-def next_turn(owner, owners):
-    return owner + 1 if owner < owners - 1 else 1
-
-
-def prev_turn(owner, owners):
-    return owner - 1 if owner > 1 else owners - 1
+    return f'{winner_string} won the game!'
 
 
 def main():
-    board = Board(DEFAULT_BOARD)
-    turn = 1
+    game = Game(Board(DEFAULT_BOARD), DEFAULT_OWNERS - 1, 1)
     error = ''
     winners = set()
     while True:
         if CLEAR:
             os.system('clear')
-        print(board.pretty)
+        print(game.board.pretty)
         if winners:
-            game_over(list(winners))
+            print(game_over(list(winners)))
+            input('Press enter to exit.')
+            sys.exit(0)
         print(error)
         error = ''
         try:
-            move_input = input(f"Player {turn}'s Move: ")
+            move_input = input(f"Player {game.turn}'s Move: ")
         except KeyboardInterrupt:
             # Don't print a traceback on KeyboardInterrupt
             print()
@@ -733,10 +748,8 @@ def main():
         if move_input == 'exit':
             sys.exit(0)
         elif move_input == 'undo':
-            if len(board.history) > 1:
-                board.history.pop()
-                board.load(board.history[-1])
-                turn = prev_turn(turn, DEFAULT_OWNERS)
+            if len(game.board.history) > 1:
+                game.undo()
             else:
                 error = 'There are no previous moves to undo.'
         else:
@@ -746,11 +759,11 @@ def main():
                 error = 'Bad move format. Moves should be given in chess notation.\n'\
                         + 'e.g. "a1b2" to move from A1 to B2.'
             else:
-                error = board.get_move_error(move, turn)
+                error = game.board.get_move_error(move, game.turn)
                 if not error:
-                    winners = board.move(move, turn)
+                    winners = game.board.move(move, game.turn)
                     if not winners:
-                        turn = next_turn(turn, DEFAULT_OWNERS)
+                        game.next_turn()
 
 
 if __name__ == '__main__':
