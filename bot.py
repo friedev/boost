@@ -39,8 +39,6 @@ class GameWrapper:
 
     @property
     def player_string(self):
-        print(self.users)
-        print(self.current_user)
         if self.current_user:
             return f"**{self.current_user}'s Turn**"
         return f"**Player {self.game.turn}'s Turn** (e.g. `/boost a1b2`)"
