@@ -113,7 +113,7 @@ async def on_message(message):
         if winners:
             # TODO ping users when they win (add a game_over method to wrapper)
             output += game_over(list(winners))
-            game.reset()
+            wrapper.reset()
         else:
             output += wrapper.player_string
         await message.channel.send(output)
