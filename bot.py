@@ -3,21 +3,6 @@
 import discord
 from boost import *
 
-client = discord.Client()
-
-class GameWrapper:
-    def __init__(self, ruleset):
-        self.ruleset = ruleset
-        self.game = ruleset.create_game()
-
-    def reset(self):
-        self.game = self.ruleset.create_game()
-
-    @property
-    def message(self):
-        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** " +\
-                '(e.g. `/boost a1b2`)'
-
 HELP = '''**Commands:**
 - `/boost`: view the current state of the game board
 - `/boost new`: start a new game
@@ -26,7 +11,47 @@ HELP = '''**Commands:**
 - `/boost undo`: undo the last move
 '''
 
+# If true, each Discord user may control multiple groups of pieces in the game
+# Playing on another registered player's turn is still forbidden
+DUPLICATE_PLAYERS = True
 COLOR = False
+
+class GameWrapper:
+    def __init__(self, ruleset):
+        self.ruleset = ruleset
+        self.game = ruleset.create_game()
+        self.users = [None] * ruleset.players
+
+    def reset(self):
+        self.game = self.ruleset.create_game()
+        self.users = [None] * self.ruleset.players
+
+    @property
+    def message(self):
+        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** " +\
+                '(e.g. `/boost a1b2`)'
+
+    def current_user(self):
+        return self.users[self.game.turn - 1]
+
+    def set_current_user(self, user):
+        self.users[self.game.turn - 1] = user
+
+    @property
+    def board_string(self):
+        return f"```{self.game.board.pretty}```"
+
+    @property
+    def player_string(self):
+        if self.current_user:
+            return f"**{self.current_user}'s Turn**"
+        return f"**Player {self.game.turn}'s Turn** (e.g. `/boost a1b2`)"
+
+    @property
+    def message(self):
+        return self.board_string + self.player_string
+
+client = discord.Client()
 wrapper = GameWrapper(DEFAULT_RULESET)
 
 @client.event
@@ -54,31 +79,51 @@ async def on_message(message):
             await message.channel.send(HELP)
             return
 
+        user = message.author.mention
+        if user not in wrapper.users and None not in wrapper.users:
+            await message.channel.send('You are not a player in this game.')
+            return
+
         game = wrapper.game
         winners = set()
         if move_input == 'undo':
             error = game.undo()
             if error:
                 await message.channel.send(error)
-        else:
-            try:
-                move = game.board.parse_move(move_input)
-            except ValueError:
-                await message.channel.send(\
-                        'Unrecognized command or move. For a list of commands, run `/boost help`.')
-                return
             else:
-                error = game.get_move_error(move)
-                if error:
-                    await message.channel.send(error)
-                    return
-                winners = game.move(move)
-        output = f"```{game.board.pretty}```"
+                await message.channel.send(wrapper.message)
+            return
+
+        if (wrapper.current_user and user != wrapper.current_user) or\
+                (not DUPLICATE_PLAYERS and not wrapper.current_user and user in wrapper.users):
+            await message.channel.send('It is not your turn to play.')
+            return
+        if not wrapper.current_user:
+            wrapper.set_current_user(user)
+
+        try:
+            move = game.board.parse_move(move_input)
+        except ValueError:
+            await message.channel.send(\
+                    'Unrecognized command or move. For a list of commands, run `/boost help`.')
+            return
+        else:
+            error = game.get_move_error(move)
+            if error:
+                await message.channel.send(error)
+                return
+            winners = game.move(move)
+        output = wrapper.board_string
         if winners:
+            # TODO ping users when they win (add a game_over method to wrapper)
             output += game_over(list(winners))
             game.reset()
         else:
-            output += f"**Player {game.turn}'s Move** (e.g. `/boost a1b2`)"
+            output += wrapper.player_string
         await message.channel.send(output)
 
-client.run('Nzc5NDE5MTM1MjU5ODM2NDU3.X7gQog.Ctt_1h81-6K41hTA5GoPGuIObCA')
+# Read Discord bot token as first command line argument
+if len(sys.argv) < 2:
+    print('Please enter your Discord bot token as a command line argument')
+    sys.exit(1)
+client.run(sys.argv[1])

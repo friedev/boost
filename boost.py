@@ -728,7 +728,6 @@ def game_over(winners):
     winner_string = f'Player {winners[0]}'
     for winner in winners[1:]:
         winner_string += f' and Player {winner}'
-    print(f'{winner_string} won the game!')
     return f'{winner_string} won the game!'
 
 
