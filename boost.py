@@ -1,6 +1,21 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
-# TODO stretch goals
+# Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# TODO
 # Prevent defeated players from playing
 # Check for defeat if you have no possible moves
 # Different games on different Discord channels/servers
@@ -10,6 +25,8 @@
 #   Might want to cache pieces dict?
 # Game rules
 # Debug powers (ignore movement rules)
+# Show location of previously moved piece before move (use *)
+# Unit tests (unittest package or just a test() method)
 # Prevent moves that would lead to a board state that has previously occured twice
 # New piece types
 #   Refactor pieces; give each properties rather than hardcoding based on type

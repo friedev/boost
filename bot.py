@@ -1,5 +1,20 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring,unused-wildcard-import
 
+# Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import discord
 from boost import *
 
@@ -9,7 +24,11 @@ HELP = '''**Commands:**
 - `/boost a1b2`: move a piece from A1 to B2 (for example)
 - `/boost d2`: build a tower or promote a pawn at D2 (for example)
 - `/boost undo`: undo the last move
-'''
+- `/boost info`: print information about the bot'''
+
+INFO = '''**boost-py** is a Python implementation of the Boost board game designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
+- **Author:** Maugrift - <https://maugrift.com>
+- **Source Code:** <https://github.com/Maugrift/boost-py>'''
 
 # If true, each Discord user may control multiple groups of pieces in the game
 # Playing on another registered player's turn is still forbidden
@@ -73,6 +92,10 @@ async def on_message(message):
 
         if move_input == 'help':
             await message.channel.send(HELP)
+            return
+
+        if move_input == 'info':
+            await message.channel.send(INFO)
             return
 
         user = message.author.mention
