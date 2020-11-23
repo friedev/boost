@@ -1,24 +1,22 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # TODO stretch goals
+# Choose ruleset at the start of a game
 # Basic AI
 #   Could do static eval based on piece counts
 #   Might want to cache pieces dict?
+# Game rules
+# Debug powers (ignore movement rules)
 # New piece types
 #   Refactor pieces; give each properties rather than hardcoding based on type
 #   Walls (for scenarios)
 #   New playable pieces (optionally enabled)
-# Discord functionality
-#   Register players
-#   Ping players on their turn
-#   Change rulesets
+# Cache piece counts
 # Export move history and/or board history
 # CLI arguments to change game options (e.g. board, solo)
-# Instructions
 # Better error messages
 # Docstrings for all functions/classes
 # Generalize system to allow for any arbitrary rulesets (e.g. chess)
-# Debug powers (ignore movement rules)
 
 import sys
 import math
@@ -129,7 +127,7 @@ class Ruleset:
 
     @property
     def owners(self):
-        return players + 1
+        return self.players + 1
 
     def create_board(self):
         return Board(self.width, self.height, self.board_string, self.dragons)
@@ -604,19 +602,8 @@ class Board:
     def is_valid(self, move, owner):
         return not self.get_move_error(move, owner)
 
-    def is_flanked(self, cell):
-        piece = self.get_piece(cell)
-        # Assumes the opposite pairs given by neighbors are 0-1 and 2-3
-        neighbor_pieces = [self.get_piece(neighbor) for neighbor in cell.neighbors]
-        for pair in zip(neighbor_pieces[::2], neighbor_pieces[1::2]):
-            if pair[0]\
-                    and pair[1]\
-                    and pair[0].owner != piece.owner\
-                    and pair[1].owner != piece.owner:
-                return True
-        return False
-
     def capture(self, cell, owner):
+        # Processes captures made by the piece moved to the given cell by the given owner
         piece = self.get_piece(cell)
         assert piece
         assert piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON
@@ -625,10 +612,16 @@ class Board:
             neighbor_piece = self.get_piece(neighbor)
             if neighbor_piece\
                     and neighbor_piece.owner != owner\
-                    and neighbor_piece.owner != DRAGON_OWNER\
-                    and self.is_flanked(neighbor):
-                self.set_piece(neighbor, None)
-                captures += 1
+                    and neighbor_piece.owner != DRAGON_OWNER:
+                flank = Cell(neighbor.row + (neighbor.row - cell.row),\
+                        neighbor.col + (neighbor.col - cell.col))
+                flanking_piece = self.get_piece(flank)
+                # TODO check capture rules in >2 player game
+                # e.g. Can P1 capture a P2 piece that's flanked by a P3 piece?
+                #      Or does the P2 piece need to be flanked by a P1 piece or dragon?
+                if flanking_piece and flanking_piece.owner != neighbor_piece.owner:
+                    self.set_piece(neighbor, None)
+                    captures += 1
         return captures
 
     @property

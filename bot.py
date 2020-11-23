@@ -15,7 +15,8 @@ class GameWrapper:
 
     @property
     def message(self):
-        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** (e.g. `/boost a1b2`)"
+        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** " +\
+                '(e.g. `/boost a1b2`)'
 
 HELP = '''**Commands:**
 - `/boost`: view the current state of the game board
