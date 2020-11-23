@@ -27,10 +27,6 @@ class GameWrapper:
         self.users = [None] * self.ruleset.players
 
     @property
-    def message(self):
-        return f"```{self.game.board.pretty}```**Player {self.game.turn}'s Move** " +\
-                '(e.g. `/boost a1b2`)'
-
     def current_user(self):
         return self.users[self.game.turn - 1]
 
@@ -43,6 +39,8 @@ class GameWrapper:
 
     @property
     def player_string(self):
+        print(self.users)
+        print(self.current_user)
         if self.current_user:
             return f"**{self.current_user}'s Turn**"
         return f"**Player {self.game.turn}'s Turn** (e.g. `/boost a1b2`)"
