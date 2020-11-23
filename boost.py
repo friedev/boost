@@ -1,12 +1,16 @@
 # pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # TODO stretch goals
+# Prevent defeated players from playing
+# Check for defeat if you have no possible moves
+# Different games on different Discord channels/servers
 # Choose ruleset at the start of a game
 # Basic AI
 #   Could do static eval based on piece counts
 #   Might want to cache pieces dict?
 # Game rules
 # Debug powers (ignore movement rules)
+# Prevent moves that would lead to a board state that has previously occured twice
 # New piece types
 #   Refactor pieces; give each properties rather than hardcoding based on type
 #   Walls (for scenarios)
@@ -17,6 +21,7 @@
 # Better error messages
 # Docstrings for all functions/classes
 # Generalize system to allow for any arbitrary rulesets (e.g. chess)
+# Support >9 players
 
 import sys
 import math
@@ -112,6 +117,25 @@ P2 .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .  .  P4
 """
 
+DEBUG_BOARD_TOWER = """
+.  D0 .  .
+D0 T1 .  P1
+.  D0 .  D0
+"""
+
+DEBUG_BOARD_CAPTURE_TOWER = """
+P1 T1
+.  .
+P2 T2
+.  D0
+"""
+
+DEBUG_BOARD_CAPTURE_PAWN = """
+P1 .  .  .
+P2 P2 P2 P2
+P1 P1 P1 P1
+"""
+
 class Ruleset:
     def __init__(self, board_string, width, height, players, dragons):
         assert board_string
@@ -145,6 +169,9 @@ class Rulesets(Enum):
     P3 = Ruleset(P3_BOARD, 9, 9, 3, 7)
     P4 = Ruleset(P4_BOARD, 9, 9, 4, 7)
     P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL, 9, 9, 4, 7)
+    DEBUG_BOARD_TOWER = Ruleset(DEBUG_BOARD_TOWER, 4, 3, 1, 0)
+    DEBUG_BOARD_CAPTURE_TOWER = Ruleset(DEBUG_BOARD_CAPTURE_TOWER, 2, 4, 2, 0)
+    DEBUG_BOARD_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN, 4, 3, 2, 0)
 
 DEFAULT_RULESET = Rulesets.P2.value
 
@@ -322,7 +349,7 @@ class Board:
 
     @staticmethod
     def empty(width, height):
-        return [[None for row in range(height)] for col in range(width)]
+        return [[None for col in range(width)] for row in range(height)]
 
     def __str__(self):
         string = ''
@@ -642,7 +669,7 @@ class Board:
         return defeated
 
     @property
-    def domination_winners(self):
+    def capture_winners(self):
         defeated = self.defeated
         if self.owners - len(defeated) == 2:
             for candidate in range(self.owners):
@@ -682,7 +709,7 @@ class Board:
             if piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON:
                 captures = self.capture(move.end, owner)
                 if captures > 0:
-                    winners = self.domination_winners
+                    winners = self.capture_winners
                     if winners:
                         return winners
                 if TOWER_VICTORY and piece.piece_type == PieceTypes.DRAGON:
