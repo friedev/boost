@@ -4,25 +4,25 @@ Boost is a turn-based abstract strategy board game designed by [Dr. Brady J. Gar
 
 ## Board
 
-Boost is normally played on a 9 x 9 grid. The columns of the grid, known as **files**, are lettered "a" to "i" from west to east. The rows of the grid, known as **ranks**, are numbered "1" to "9" from south to north.
+Boost is normally played on a 9 x 9 grid. The columns of the grid, known as **files**, are lettered `a` to `i` from west to east. The rows of the grid, known as **ranks**, are numbered `1` to `9` from south to north.
 
-Pieces are placed in cells on the grid, known as **points**. Points are named by file and rank. For example, the point in the southwest corner is called "a1" because it is where file "a" and rank "1" intersect.
+Pieces are placed in cells on the grid, known as **points**. Points are named by file and rank. For example, the point in the southwest corner is called `a1` because it is where file `a` and rank `1` intersect.
 
 ## Pieces
 
 There are three types of player-controlled Boost pieces: **pawns**, **knights**, and **towers**. There are also **dragons**, pieces that do not belong to any player.
 
-In boost-py, pawns are represented with the symbol "P", knights with "K", towers with "T", and dragons with "D".
+In boost-py, pawns are represented with the symbol `P`, knights with `K`, towers with `T`, and dragons with `D`.
 
 Each player controls their own set of pieces. If color is enabled, all the pieces controlled by a given player share the same color.
 
 If color is not enabled in a standard two-player game, then Player 1's pieces are represented with lowercase characters, while Player 2's pieces are represented with uppercase characters. (Dragons are always uppercase, although they are not controlled by Player 2.)
 
-If color is not enabled in a game with more than two players, then the player number is appended to the piece's symbol. For instance, "K4" would represent a knight owned by Player 4.
+If color is not enabled in a game with more than two players, then the player number is appended to the piece's symbol. For instance, `K4` would represent a knight owned by Player 4.
 
 ## Setup
 
-In a two-player game, each side begins with 8 pawns. The first player's pawns go on the first rank, and the second player's pawns go on the ninth rank. Pawns go on every file except for the "e" file.
+In a two-player game, each side begins with 8 pawns. The first player's pawns go on the first rank, and the second player's pawns go on the ninth rank. Pawns go on every file except for the `e` file.
 
 In a standard game, 7 dragons are added to the board in a random symmetric pattern. However, players may choose to play a dragonless game instead.
 
