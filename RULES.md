@@ -65,26 +65,28 @@ Only one piece may move each turn. Boost pieces move by taking **steps** along t
 
 The number of steps a piece takes on a turn depends on its type and its neighbors. Towers always have zero steps, so they cannot move. Pawns and knights get one step for themselves, plus one additional step for each piece they are next to, even if that piece belongs to an opponent. The additional steps are called **boosts**. When a piece moves, it must always take all of its steps.
 
+In the following examples, the second board shows the result of a possible move from the first board.
+
 ```
 . . . . . .    . . . . . .
-. p . . . . => . * p . . .
+. p . . . . => . . p . . .
 . . . . . .    . . . . . .
 ```
 
 ```
 . t . . . .    . t . . . .
-K p . . . . => K * . . . p
+K p . . . . => K . . . . p
 . D . . . .    . D . . . .
 ```
 
 A piece may not step onto a point occupied by another piece. Also, a piece may not occupy the same point twice in one turn.
 
-Moves such as the following are perfectly valid. (The path taken by the pawn is marked with `+` signs.)
+Moves such as the following are perfectly valid. (The path taken by the pawn is marked with `*` signs.)
 
 ```
 . t .    . t .
-K p . => K * +
-. . .    . p +
+K p . => K * *
+. . .    . p *
 ```
 
 ## Construction
@@ -116,7 +118,7 @@ Knights can **capture** pieces by ending their move on an opponent's piece, remo
 ```
 . P .    . k .
 . . . => . . .
-p k .    p * .
+p k .    p . .
 ```
 
 Pawns can capture pieces as well, but not directly. After a player finishes moving a pawn, if an opponent's piece is adjacent to that pawn on one side and adjacent to another of the player's pieces on the opposite side, it is removed from the board. This is also known as **flanking** the opponent's piece with the pawn.
@@ -124,16 +126,24 @@ Pawns can capture pieces as well, but not directly. After a player finishes movi
 ```
 . p .    . p .
 . P . => . . .
-p . .    * p .
+p . .    . p .
 ```
 
 A pawn can capture multiple pieces in the same turn.
+
+```
+. p .    . p .
+. P .    . . .
+p . . => . p .
+. P .    . . .
+. p .    . p .
+```
 
 Pawns only capture after they move. They cannot capture at other times.
 
 ```
 . p .    . p .
-P . . => * P .
+P . . => . P .
 . p .    . p .
 ```
 
@@ -152,7 +162,7 @@ A player can move any dragon that is adjacent to one of their pieces. They canno
 ```
 . . .    . D .
 . . . => . . .
-p D .    p * .
+p D .    p . .
 ```
 
 Dragons have the same rules for capturing as pawns. For instance, you can move a dragon and capture a piece by flanking it with another dragon or another one of your pieces.
@@ -160,7 +170,7 @@ Dragons have the same rules for capturing as pawns. For instance, you can move a
 ```
 . . D    . . D
 p . P => p . .
-D . .    * . D
+D . .    . . D
 ```
 
 ## Passing
@@ -226,7 +236,7 @@ The turn order starts with Player 1, then continues to Player 2, Player 3, and s
 In this variant, you cannot flank an opponent's piece with a different opponent's piece.
 
 ```
-.  P3 .     .  P3 . 
-.  P2 .  => .  P2 . 
-P1 .  .     .  P1 . 
+.  P3 .     .  P3 .
+.  P2 .  => .  P2 .
+P1 .  .     .  P1 .
 ```
