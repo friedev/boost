@@ -24,12 +24,14 @@ HELP = '''**Commands:**
 - `/boost a1b2`: move a piece from A1 to B2 (for example)
 - `/boost d2`: build a tower or promote a pawn at D2 (for example)
 - `/boost undo`: undo the last move
-- `/boost info`: print information about the bot'''
+- `/boost info`: print information about the bot
+
+**Rules:** <https://github.com/Maugrift/boost-py/blob/master/RULES.md>'''
 
 INFO = '''\
 **boost-py** is a Python implementation of the Boost board game\
 designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
-- Author: Maugrift - <https://maugrift.com>
+- Author: Aaron Friesen - <https://maugrift.com>
 - Source Code: <https://github.com/Maugrift/boost-py>'''
 
 # If true, each Discord user may control multiple groups of pieces in the game
