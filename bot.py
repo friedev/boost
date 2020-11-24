@@ -70,6 +70,13 @@ class GameWrapper:
     def message(self):
         return self.board_string + self.player_string
 
+    def game_over(self, winner):
+        winner_string = self.users[winner - 1]
+        if not winner_string:
+            winner_string = f'Player {winner}'
+        self.reset()
+        return f'{winner_string} won the game!'
+
 client = discord.Client()
 wrappers = {}
 
@@ -113,7 +120,7 @@ async def on_message(message):
             return
 
         game = wrapper.game
-        winners = set()
+        winner = None
         if move_input == 'undo':
             error = game.undo()
             if error:
@@ -123,7 +130,7 @@ async def on_message(message):
             return
 
         if move_input == 'forfeit':
-            winners = wrapper.game.forfeit()
+            winner = wrapper.game.forfeit()
         else:
             if (wrapper.current_user and user != wrapper.current_user) or\
                     (not DUPLICATE_PLAYERS and not wrapper.current_user and user in wrapper.users):
@@ -143,13 +150,11 @@ async def on_message(message):
                 if error:
                     await message.channel.send(error)
                     return
-                winners = game.move(move)
+                winner = game.move(move)
 
         output = wrapper.board_string
-        if winners:
-            # TODO ping users when they win (add a game_over method to wrapper)
-            output += game_over(list(winners))
-            wrapper.reset()
+        if winner:
+            output += wrapper.game_over(winner)
         else:
             output += wrapper.player_string
         await message.channel.send(output)

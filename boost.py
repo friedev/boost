@@ -39,7 +39,7 @@
 # Performance
 #   Cache piece counts
 #   Cache defeated players
-#   Cache winners
+#   Cache winner?
 # New piece types
 #   Give each piece properties rather than hardcoding based on type
 #   Walls (for variants)
@@ -50,6 +50,7 @@
 #   >26 files
 #   Symmetric placement of dragons for >2 players
 # Refactor to support any arbitrary rulesets (e.g. chess)
+# Better icon?
 
 import sys
 import math
@@ -145,14 +146,14 @@ P2 .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .  .  P4
 """
 
-# P1 can win with d1c2
+# P1 can win a tower victory with d1c2
 DEBUG_BOARD_TOWER = """
 .  D0 .  .
 D0 T1 .  P1
 .  D0 .  D0
 """
 
-# P1 can win with a4b3
+# P1 can win a capture victory with a4b3
 DEBUG_BOARD_CAPTURE_TOWER = """
 P1 T1
 .  .
@@ -160,11 +161,21 @@ P2 T2
 .  D0
 """
 
-# P1 can win with a3c3
+# P1 can win a capture victory with a3c3
 DEBUG_BOARD_CAPTURE_PAWN = """
 P1 .  .  .
 P2 P2 P2 P2
 P1 P1 P1 P1
+"""
+
+# P1 can defeat P2, P3, and P4 with b5c3
+# The captures should be processed before P2/P3/P4 win a tower victory!
+DEBUG_BOARD_TRIPLE_DEFEAT = """
+P1 D0 .  T1 P3
+P2 D0 .  D0 P4
+D0 T2 .  T3 D0
+D0 D0 T4 D0 D0
+.  D0 D0 D0 .
 """
 
 # P1 can defeat P2 with a4b3
@@ -212,6 +223,7 @@ class Rulesets(Enum):
     DEBUG_TOWER = Ruleset(DEBUG_BOARD_TOWER, 4, 3, 1, 0)
     DEBUG_CAPTURE_TOWER = Ruleset(DEBUG_BOARD_CAPTURE_TOWER, 2, 4, 2, 0)
     DEBUG_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN, 4, 3, 2, 0)
+    DEBUG_TRIPLE_DEFEAT = Ruleset(DEBUG_BOARD_TRIPLE_DEFEAT, 5, 5, 4, 0)
     DEBUG_DEFEATED = Ruleset(DEBUG_BOARD_DEFEATED, 3, 4, 3, 0)
 
 DEFAULT_RULESET = Rulesets.P2.value
@@ -711,17 +723,17 @@ class Board:
         return defeated | self.forfeited
 
     @property
-    def capture_winners(self):
+    def capture_winner(self):
         defeated = self.defeated
+        # 2 corresponds to the dragon owner + one remaining player
         if self.owners - len(defeated) == 2:
             for candidate in range(self.owners):
                 if candidate != DRAGON_OWNER and candidate not in defeated:
-                    return {candidate}
-        return set()
+                    return candidate
+        return None
 
     @property
-    def tower_winners(self):
-        tower_winners = set()
+    def tower_winner(self):
         for cell in self.tower_cells:
             tower = self.get_piece(cell)
             if tower and tower.piece_type == PieceTypes.TOWER:
@@ -732,8 +744,8 @@ class Board:
                         break
                     dragons += 1
                 if dragons == 4:
-                    tower_winners.add(tower.owner)
-        return tower_winners
+                    return tower.owner
+        return None
 
     def move(self, move, owner):
         if move.start == move.end:
@@ -751,13 +763,13 @@ class Board:
             if piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON:
                 captures = self.capture(move.end, owner)
                 if captures > 0:
-                    winners = self.capture_winners
-                    if winners:
-                        return winners
+                    winner = self.capture_winner
+                    if winner:
+                        return winner
                 if TOWER_VICTORY and piece.piece_type == PieceTypes.DRAGON:
-                    winners = self.tower_winners
-                    if winners:
-                        return winners
+                    winner = self.tower_winner
+                    if winner:
+                        return winner
         return set()
 
 
@@ -782,10 +794,10 @@ class Game:
         return self.board.get_move_error(move, self.turn)
 
     def move(self, move):
-        winners = self.board.move(move, self.turn)
+        winner = self.board.move(move, self.turn)
         self.next_turn()
         self.history.append(str(self.board))
-        return winners
+        return winner
 
     def undo(self):
         if len(self.history) > 1:
@@ -798,27 +810,19 @@ class Game:
     def forfeit(self):
         self.board.forfeited.add(self.turn)
         self.next_turn()
-        return self.board.capture_winners
-
-
-def game_over(winners):
-    assert winners
-    winner_string = f'Player {winners[0]}'
-    for winner in winners[1:]:
-        winner_string += f' and Player {winner}'
-    return f'{winner_string} won the game!'
+        return self.board.capture_winner
 
 
 def main():
     game = DEFAULT_RULESET.create_game()
     error = ''
-    winners = set()
+    winner = None
     while True:
         if CLEAR:
             os.system('clear')
         print(game.board.pretty)
-        if winners:
-            print(game_over(list(winners)))
+        if winner:
+            print(f'Player {winner} won the game!')
             input('Press enter to exit.')
             sys.exit(0)
         print(error)
@@ -834,7 +838,7 @@ def main():
         elif move_input == 'undo':
             error = game.undo()
         elif move_input == 'forfeit':
-            winners = game.forfeit()
+            winner = game.forfeit()
         else:
             try:
                 move = game.board.parse_move(move_input)
@@ -844,7 +848,7 @@ def main():
             else:
                 error = game.get_move_error(move)
                 if not error:
-                    winners = game.move(move)
+                    winner = game.move(move)
 
 
 if __name__ == '__main__':

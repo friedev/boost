@@ -21,6 +21,8 @@ To run boost-py as a Discord bot, you have two options:
 - Run `python3 bot.py [token]`, where `[token]` is your Discord bot token.
 - Save your Discord bot token to a file named `token.txt` in repo directory. Then, run `./bot.sh` (or `./bot.sh&` to run it in the background).
 
+After inviting the bot to a server, you can view a list of bot commands by sending `/boost help` in a channel the bot can read and send messages in.
+
 ## Contributing
 
 boost-py is being developed by [Maugrift](https://maugrift.com) as a fun side project, so don't expect incredible levels of polish. However, I am open to issues and pull requests! If you want to submit a PR, make sure to run `pylint` (or `pylint3`) on all of the source files you've changed and ensure there are as few lint issues as possible. Of course, also make sure you run the game (both CLI and Discord bot if possible) to check for bugs.
