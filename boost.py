@@ -16,29 +16,40 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # TODO
-# Choose ruleset at the start of a game
-# Support >9 ranks
-# Debug powers (ignore movement rules)
-# Show location of previously moved piece before move (use *)
-# Basic AI
-#   Could do static eval based on piece counts
-#   Might want to cache pieces dict?
-# Skip player's turn if they have no possible moves
-# Prevent moves that would lead to a previous board state
-# Unit tests (unittest package or just a test() method)
-# Optional logging
+# Runtime configuration and persistence
+#   Choose ruleset via Discord and CLI arguments
+#   Save/load game state to/from file
+#   Track player stats on Discord
+# Show information about previous move
+#   Location of previously moved piece before move
+#   Location of captured pieces
+# Full rules compliance
+#   Skip player's turn if they have no possible moves
+#   Prevent moves that would lead to a previous board state
+# AI
+#   Static evaluation score based on piece counts
+#   Iterate over all possible moves and choose the one with maximum score
+# Maintainability
+#   Debug powers (ignore movement rules)
+#   Unit tests (unittest package or just a test() method)
+#   Optional logging
+# Documentation
+#   Better error messages
+#   Docstrings for all functions/classes
+# Performance
+#   Cache piece counts
+#   Cache defeated players
+#   Cache winners
 # New piece types
-#   Refactor pieces; give each properties rather than hardcoding based on type
-#   Walls (for scenarios)
-#   New playable pieces (optionally enabled)
-# Cache piece counts
-# Export move history and/or board history
-# CLI arguments to change game options (e.g. board, solo)
-# Better error messages
-# Docstrings for all functions/classes
-# Generalize system to allow for any arbitrary rulesets (e.g. chess)
-# Support >9 players
-# Support >26 files
+#   Give each piece properties rather than hardcoding based on type
+#   Walls (for variants)
+#   New playable pieces (for variants)
+# Arbitrary game sizes
+#   >9 players
+#   >9 ranks
+#   >26 files
+#   Symmetric placement of dragons for >2 players
+# Refactor to support any arbitrary rulesets (e.g. chess)
 
 import sys
 import math
@@ -217,7 +228,6 @@ DRAGONS = 7
 MIN_PIECES = 4
 
 TOWER_VICTORY = True
-
 CLEAR = True
 
 
@@ -274,10 +284,12 @@ class Cell:
                 Cell(self.row, self.col - 1),
                 Cell(self.row, self.col + 1)]
 
+
 class PieceType:
     def __init__(self, name, symbol):
         self.name = name
         self.symbol = symbol
+
 
 class PieceTypes(Enum):
     DRAGON = PieceType('Dragon', 'D')

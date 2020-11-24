@@ -23,7 +23,7 @@ To run boost-py as a Discord bot, you have two options:
 
 ## Contributing
 
-boost-py is being developed by [Maugrift](https://maugrift.com) as a fun side project, so don't expect incredible levels of polish. However, I am open to issues and pull requests! If you want to submit a PR, make sure to run `pylint3` on all of the source files you've changed and ensure there are as few lint issues as possible. Of course, also make sure you run the game (both CLI and Discord bot if possible) to check for bugs.
+boost-py is being developed by [Maugrift](https://maugrift.com) as a fun side project, so don't expect incredible levels of polish. However, I am open to issues and pull requests! If you want to submit a PR, make sure to run `pylint` (or `pylint3`) on all of the source files you've changed and ensure there are as few lint issues as possible. Of course, also make sure you run the game (both CLI and Discord bot if possible) to check for bugs.
 
 If you're not sure what to work on, you can find a temporary list of tasks in a comment in `boost.py`.
 
