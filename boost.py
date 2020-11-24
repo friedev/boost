@@ -17,16 +17,15 @@
 
 # TODO
 # Choose ruleset at the start of a game
-# Basic AI
-#   Could do static eval based on piece counts
-#   Might want to cache pieces dict?
-# Game rules
 # Support >9 ranks
 # Debug powers (ignore movement rules)
 # Show location of previously moved piece before move (use *)
+# Basic AI
+#   Could do static eval based on piece counts
+#   Might want to cache pieces dict?
+# Skip player's turn if they have no possible moves
+# Prevent moves that would lead to a previous board state
 # Unit tests (unittest package or just a test() method)
-# Check for defeat if you have no possible moves
-# Prevent moves that would lead to a board state that has previously occured twice
 # Optional logging
 # New piece types
 #   Refactor pieces; give each properties rather than hardcoding based on type
@@ -204,7 +203,7 @@ class Rulesets(Enum):
     DEBUG_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN, 4, 3, 2, 0)
     DEBUG_DEFEATED = Ruleset(DEBUG_BOARD_DEFEATED, 3, 4, 3, 0)
 
-DEFAULT_RULESET = Rulesets.P2.value
+DEFAULT_RULESET = Rulesets.DEBUG_DEFEATED.value
 
 EMPTY_CELL_SHORT = '.'
 EMPTY_CELL_LONG = '. '
@@ -675,10 +674,9 @@ class Board:
                 flank = Cell(neighbor.row + (neighbor.row - cell.row),\
                         neighbor.col + (neighbor.col - cell.col))
                 flanking_piece = self.get_piece(flank)
-                # TODO check capture rules in >2 player game
-                # e.g. Can P1 capture a P2 piece that's flanked by a P3 piece?
-                #      Or does the P2 piece need to be flanked by a P1 piece or dragon?
-                if flanking_piece and flanking_piece.owner != neighbor_piece.owner:
+                if flanking_piece and\
+                        (flanking_piece.owner == owner or\
+                        flanking_piece.owner == DRAGON_OWNER):
                     self.set_piece(neighbor, None)
                     captures += 1
         return captures
