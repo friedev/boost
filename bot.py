@@ -26,9 +26,11 @@ HELP = '''**Commands:**
 - `/boost undo`: undo the last move
 - `/boost info`: print information about the bot'''
 
-INFO = '''**boost-py** is a Python implementation of the Boost board game designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
-- **Author:** Maugrift - <https://maugrift.com>
-- **Source Code:** <https://github.com/Maugrift/boost-py>'''
+INFO = '''\
+**boost-py** is a Python implementation of the Boost board game\
+designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
+- Author: Maugrift - <https://maugrift.com>
+- Source Code: <https://github.com/Maugrift/boost-py>'''
 
 # If true, each Discord user may control multiple groups of pieces in the game
 # Playing on another registered player's turn is still forbidden
@@ -118,25 +120,29 @@ async def on_message(message):
                 await message.channel.send(wrapper.message)
             return
 
-        if (wrapper.current_user and user != wrapper.current_user) or\
-                (not DUPLICATE_PLAYERS and not wrapper.current_user and user in wrapper.users):
-            await message.channel.send('It is not your turn to play.')
-            return
-        if not wrapper.current_user:
-            wrapper.set_current_user(user)
-
-        try:
-            move = game.board.parse_move(move_input)
-        except ValueError:
-            await message.channel.send(\
-                    'Unrecognized command or move. For a list of commands, run `/boost help`.')
-            return
+        if move_input == 'forfeit':
+            winners = wrapper.game.forfeit()
         else:
-            error = game.get_move_error(move)
-            if error:
-                await message.channel.send(error)
+            if (wrapper.current_user and user != wrapper.current_user) or\
+                    (not DUPLICATE_PLAYERS and not wrapper.current_user and user in wrapper.users):
+                await message.channel.send('It is not your turn to play.')
                 return
-            winners = game.move(move)
+            if not wrapper.current_user:
+                wrapper.set_current_user(user)
+
+            try:
+                move = game.board.parse_move(move_input)
+            except ValueError:
+                await message.channel.send(\
+                        'Unrecognized command or move. For a list of commands, run `/boost help`.')
+                return
+            else:
+                error = game.get_move_error(move)
+                if error:
+                    await message.channel.send(error)
+                    return
+                winners = game.move(move)
+
         output = wrapper.board_string
         if winners:
             # TODO ping users when they win (add a game_over method to wrapper)

@@ -785,6 +785,11 @@ class Game:
             return ''
         return 'There are no previous moves to undo.'
 
+    def forfeit(self):
+        self.board.forfeited.add(self.turn)
+        self.next_turn()
+        return self.board.capture_winners
+
 
 def game_over(winners):
     assert winners
@@ -819,9 +824,7 @@ def main():
         elif move_input == 'undo':
             error = game.undo()
         elif move_input == 'forfeit':
-            game.board.forfeited.add(game.turn)
-            game.next_turn()
-            winners = game.board.capture_winners
+            winners = game.forfeit()
         else:
             try:
                 move = game.board.parse_move(move_input)
