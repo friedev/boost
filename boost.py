@@ -16,8 +16,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # TODO
-# Check for defeat if you have no possible moves
-# Add support for forfeiture
 # Choose ruleset at the start of a game
 # Basic AI
 #   Could do static eval based on piece counts
@@ -27,6 +25,7 @@
 # Debug powers (ignore movement rules)
 # Show location of previously moved piece before move (use *)
 # Unit tests (unittest package or just a test() method)
+# Check for defeat if you have no possible moves
 # Prevent moves that would lead to a board state that has previously occured twice
 # Optional logging
 # New piece types
@@ -370,6 +369,7 @@ class Board:
         self.board = Board.empty(width, height)
         self.load(string)
         self.place_dragons(dragons)
+        self.forfeited = set()
 
     @property
     def width(self):
@@ -685,7 +685,7 @@ class Board:
 
     @property
     def defeated(self):
-        defeated = []
+        defeated = set()
         pieces = self.pieces
         for owner in range(self.owners):
             if owner != DRAGON_OWNER:
@@ -697,8 +697,8 @@ class Board:
                 owner_towers = pieces.get(Piece(owner, PieceTypes.TOWER))
                 if (owner_towers and owner_total == owner_towers) or\
                         (not owner_towers and owner_total < MIN_PIECES):
-                    defeated.append(owner)
-        return defeated
+                    defeated.add(owner)
+        return defeated | self.forfeited
 
     @property
     def capture_winners(self):
@@ -818,6 +818,10 @@ def main():
             sys.exit(0)
         elif move_input == 'undo':
             error = game.undo()
+        elif move_input == 'forfeit':
+            game.board.forfeited.add(game.turn)
+            game.next_turn()
+            winners = game.board.capture_winners
         else:
             try:
                 move = game.board.parse_move(move_input)
