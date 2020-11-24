@@ -67,7 +67,7 @@ class GameWrapper:
         return self.board_string + self.player_string
 
 client = discord.Client()
-wrapper = GameWrapper(DEFAULT_RULESET)
+wrappers = {}
 
 @client.event
 async def on_ready():
@@ -79,6 +79,11 @@ async def on_message(message):
         return
 
     if message.content.startswith('/boost'):
+        wrapper = wrappers.get(message.channel.id)
+        if not wrapper:
+            wrapper = GameWrapper(DEFAULT_RULESET)
+            wrappers[message.channel.id] = wrapper
+
         data = message.content.split()
         if len(data) == 1:
             await message.channel.send(wrapper.message)

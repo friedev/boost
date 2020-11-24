@@ -24,10 +24,12 @@
 #   Could do static eval based on piece counts
 #   Might want to cache pieces dict?
 # Game rules
+# Support >9 ranks
 # Debug powers (ignore movement rules)
 # Show location of previously moved piece before move (use *)
 # Unit tests (unittest package or just a test() method)
 # Prevent moves that would lead to a board state that has previously occured twice
+# Optional logging
 # New piece types
 #   Refactor pieces; give each properties rather than hardcoding based on type
 #   Walls (for scenarios)
@@ -39,6 +41,7 @@
 # Docstrings for all functions/classes
 # Generalize system to allow for any arbitrary rulesets (e.g. chess)
 # Support >9 players
+# Support >26 files
 
 import sys
 import math
