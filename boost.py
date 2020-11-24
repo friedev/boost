@@ -16,9 +16,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # TODO
-# Prevent defeated players from playing
 # Check for defeat if you have no possible moves
-# Different games on different Discord channels/servers
+# Add support for forfeiture
 # Choose ruleset at the start of a game
 # Basic AI
 #   Could do static eval based on piece counts
@@ -137,12 +136,14 @@ P2 .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .  .  P4
 """
 
+# P1 can win with d1c2
 DEBUG_BOARD_TOWER = """
 .  D0 .  .
 D0 T1 .  P1
 .  D0 .  D0
 """
 
+# P1 can win with a4b3
 DEBUG_BOARD_CAPTURE_TOWER = """
 P1 T1
 .  .
@@ -150,10 +151,20 @@ P2 T2
 .  D0
 """
 
+# P1 can win with a3c3
 DEBUG_BOARD_CAPTURE_PAWN = """
 P1 .  .  .
 P2 P2 P2 P2
 P1 P1 P1 P1
+"""
+
+# P1 can defeat P2 with a4b3
+# Turn order should skip to P3
+DEBUG_BOARD_DEFEATED = """
+P1 T1 P3
+.  .  .
+P2 T2 .
+.  D0 T3
 """
 
 class Ruleset:
@@ -189,9 +200,10 @@ class Rulesets(Enum):
     P3 = Ruleset(P3_BOARD, 9, 9, 3, 7)
     P4 = Ruleset(P4_BOARD, 9, 9, 4, 7)
     P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL, 9, 9, 4, 7)
-    DEBUG_BOARD_TOWER = Ruleset(DEBUG_BOARD_TOWER, 4, 3, 1, 0)
-    DEBUG_BOARD_CAPTURE_TOWER = Ruleset(DEBUG_BOARD_CAPTURE_TOWER, 2, 4, 2, 0)
-    DEBUG_BOARD_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN, 4, 3, 2, 0)
+    DEBUG_TOWER = Ruleset(DEBUG_BOARD_TOWER, 4, 3, 1, 0)
+    DEBUG_CAPTURE_TOWER = Ruleset(DEBUG_BOARD_CAPTURE_TOWER, 2, 4, 2, 0)
+    DEBUG_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN, 4, 3, 2, 0)
+    DEBUG_DEFEATED = Ruleset(DEBUG_BOARD_DEFEATED, 3, 4, 3, 0)
 
 DEFAULT_RULESET = Rulesets.P2.value
 
@@ -748,9 +760,13 @@ class Game:
 
     def next_turn(self):
         self.turn = self.turn + 1 if self.turn < self.players else 1
+        if self.turn in self.board.defeated:
+            self.next_turn()
 
     def prev_turn(self):
         self.turn = self.turn - 1 if self.turn > 1 else self.players
+        if self.turn in self.board.defeated:
+            self.prev_turn()
 
     def get_move_error(self, move):
         return self.board.get_move_error(move, self.turn)
@@ -763,9 +779,9 @@ class Game:
 
     def undo(self):
         if len(self.history) > 1:
+            self.prev_turn()
             self.history.pop()
             self.board.load(self.history[-1])
-            self.prev_turn()
             return ''
         return 'There are no previous moves to undo.'
 
