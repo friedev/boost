@@ -174,8 +174,8 @@ DEBUG_BOARD_TRIPLE_DEFEAT = """
 P1 D0 .  T1 P3
 P2 D0 .  D0 P4
 D0 T2 .  T3 D0
-D0 D0 T4 D0 D0
-.  D0 D0 D0 .
+.  D0 T4 D0 .
+.  .  D0 .  .
 """
 
 # P1 can defeat P2 with a4b3
@@ -757,20 +757,32 @@ class Board:
                 # Promote knight
                 self.board[move.start.row][move.start.col] = Piece(owner, PieceTypes.KNIGHT)
         else:
+            # Move piece
             piece = self.board[move.start.row][move.start.col]
+            target = self.board[move.end.row][move.end.col]
             self.set_piece(move.start, None)
             self.set_piece(move.end, piece)
-            if piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON:
+
+            captures = 0
+            # Check for direct knight capture
+            if piece.piece_type == PieceTypes.KNIGHT and target:
+                captures = 1
+            # Check for pawn or dragon capture
+            elif piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON:
                 captures = self.capture(move.end, owner)
-                if captures > 0:
-                    winner = self.capture_winner
-                    if winner:
-                        return winner
-                if TOWER_VICTORY and piece.piece_type == PieceTypes.DRAGON:
-                    winner = self.tower_winner
-                    if winner:
-                        return winner
-        return set()
+            # Check for capture victory if any pieces were captured
+            if captures > 0:
+                winner = self.capture_winner
+                if winner:
+                    return winner
+
+            # Check for tower victory if a dragon was moved
+            # Must be checked after captures in case a player captured a tower by moving a fourth dragon next to it
+            if TOWER_VICTORY and piece.piece_type == PieceTypes.DRAGON:
+                winner = self.tower_winner
+                if winner:
+                    return winner
+        return None
 
 
 class Game:
@@ -780,15 +792,27 @@ class Game:
         self.turn = turn
         self.history = [str(board)]
 
+    def get_next_turn(self):
+        return self.turn + 1 if self.turn < self.players else 1
+
     def next_turn(self):
-        self.turn = self.turn + 1 if self.turn < self.players else 1
-        if self.turn in self.board.defeated:
-            self.next_turn()
+        initial_turn = self.turn
+        self.turn = self.get_next_turn()
+        while self.turn in self.board.defeated:
+            if self.turn == initial_turn:
+                raise ValueError('Every player in the game is defeated')
+            self.turn = self.get_next_turn()
+
+    def get_prev_turn(self):
+        return self.turn - 1 if self.turn > 1 else self.players
 
     def prev_turn(self):
-        self.turn = self.turn - 1 if self.turn > 1 else self.players
-        if self.turn in self.board.defeated:
-            self.prev_turn()
+        initial_turn = self.turn
+        self.turn = self.get_prev_turn()
+        while self.turn in self.board.defeated:
+            if self.turn == initial_turn:
+                raise ValueError('Every player in the game is defeated')
+            self.turn = self.get_prev_turn()
 
     def get_move_error(self, move):
         return self.board.get_move_error(move, self.turn)
