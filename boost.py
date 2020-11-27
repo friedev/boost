@@ -796,22 +796,24 @@ class Game:
         return self.turn + 1 if self.turn < self.players else 1
 
     def next_turn(self):
-        initial_turn = self.turn
+        defeated = self.board.defeated
+        if len(defeated) == self.players:
+            raise ValueError('Every player in the game is defeated')
+
         self.turn = self.get_next_turn()
-        while self.turn in self.board.defeated:
-            if self.turn == initial_turn:
-                raise ValueError('Every player in the game is defeated')
+        while self.turn in defeated:
             self.turn = self.get_next_turn()
 
     def get_prev_turn(self):
         return self.turn - 1 if self.turn > 1 else self.players
 
     def prev_turn(self):
-        initial_turn = self.turn
+        defeated = self.board.defeated
+        if len(defeated) == self.players:
+            raise ValueError('Every player in the game is defeated')
+
         self.turn = self.get_prev_turn()
-        while self.turn in self.board.defeated:
-            if self.turn == initial_turn:
-                raise ValueError('Every player in the game is defeated')
+        while self.turn in defeated:
             self.turn = self.get_prev_turn()
 
     def get_move_error(self, move):
