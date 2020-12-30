@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <filter id="shadow">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="16" />
+    <feMerge>
+      <feMergeNode />
+      <feMergeNode in="SourceGraphic" />
+    </feMerge>
+  </filter>
+  <circle fill="rgba(0, 127, 127, 1)" cx="256" cy="256" r="224" filter="url(#shadow)" />
+  <circle fill="rgba(0, 255, 255, 1)" cx="256" cy="256" r="180" />
+  <circle fill="rgba(0, 127, 127, 1)" cx="256" cy="256" r="140" />
+  <path stroke="rgba(0, 127, 127, 1)" d="M 128 128
+			                 L 384 384
+			                 M 128 384
+			                 L 384 128" stroke-width="20" />
+</svg>

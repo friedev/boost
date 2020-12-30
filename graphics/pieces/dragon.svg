@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <filter id="shadow">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="16" />
+    <feMerge>
+      <feMergeNode />
+      <feMergeNode in="SourceGraphic" />
+    </feMerge>
+  </filter>
+  <marker id="arrow" viewBox="-128 0 256 128" refX="0" refY="64"
+          markerUnits="userSpaceOnUse" markerWidth="256" markerHeight="128"
+          orient="auto">
+    <path d="M 0 64
+             C 32 64 0 96 -24 112
+             C 0 112 64 112 90.50966799187808 26.509667991878132
+             z" stroke="rgba(207, 207, 207, 1)" stroke-width="10" stroke-linejoin="round" fill="rgba(207, 207, 207, 1)" />
+  </marker>
+  <circle cx="256" cy="256" r="224" stroke="rgba(127, 127, 127, 1)" stroke-width="12" fill="rgba(127, 127, 127, 1)" filter="url(#shadow)" />
+  <path d="M 384 256
+           L 346.5096679918781 165.4903320081219
+           L 256 128
+           L 165.4903320081219 165.4903320081219
+           L 128 256
+           L 165.4903320081219 346.5096679918781
+           L 256 384
+           L 346.5096679918781 346.5096679918781
+           L 384 256
+           L 346.5096679918781 165.4903320081219"
+        fill="rgba(207, 207, 207, 1)" stroke="none" marker-mid="url(#arrow)" />
+  <circle cx="256" cy="256" r="80"
+          fill="rgba(127, 127, 127, 1)" stroke="rgba(127, 127, 127, 1)" stroke-width="12" />
+  <path d="M 277 96
+           C 235 129 176 192 176 256
+           L 288 184
+           C 264 184 232 184 216 164
+           C 236 132 256 108 308 96
+           C 292 92 284 92 277 96
+           z"
+        fill="rgba(127, 127, 127, 1)" stroke="rgba(127, 127, 127, 1)" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 280 128
+           C 288 128 296 127 300 126
+           C 302 124 304 122 306 118
+           C 296 118 288 122 280 128
+           z"
+        fill="rgba(127, 127, 127, 1)" stroke="rgba(127, 127, 127, 1)" stroke-width="6" stroke-linejoin="round" />
+</svg>

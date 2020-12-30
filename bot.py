@@ -17,6 +17,7 @@
 
 import discord
 from boost import *
+from graphics import render_for_discord, RendererNotFoundError
 
 HELP = '''**Commands:**
 - `/boost`: view the current state of the game board
@@ -39,6 +40,8 @@ designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
 # Playing on another registered player's turn is still forbidden
 DUPLICATE_PLAYERS = True
 COLOR = False
+BOARD_IMAGE_SIZE = 1024
+BOARD_IMAGE_BACKGROUND_RGBA = 'dededeff'
 
 class GameWrapper:
     def __init__(self, ruleset):
@@ -67,16 +70,35 @@ class GameWrapper:
             return f"**{self.current_user}'s Turn**"
         return f"**Player {self.game.turn}'s Turn** (e.g. `/boost a1b2`)"
 
+    def _build_message(self, text):
+        try:
+            image = render_for_discord(
+                self.game.board,
+                'board.png',
+                BOARD_IMAGE_SIZE,
+                BOARD_IMAGE_SIZE,
+                BOARD_IMAGE_BACKGROUND_RGBA,
+            )
+            return {
+                'file': image,
+                'content': text,
+            }
+        except RendererNotFoundError:
+            return {
+                'content': self.board_string + text,
+            }
+
     @property
     def message(self):
-        return self.board_string + self.player_string
+        return self._build_message(self.player_string)
 
     def game_over(self, winner):
         winner_string = self.users[winner - 1]
         if not winner_string:
             winner_string = f'Player {winner}'
+        result = self._build_message(f'{winner_string} won the game!')
         self.reset()
-        return f'{winner_string} won the game!'
+        return result
 
 client = discord.Client()
 wrappers = {}
@@ -98,13 +120,13 @@ async def on_message(message):
 
         data = message.content.split()
         if len(data) == 1:
-            await message.channel.send(wrapper.message)
+            await message.channel.send(**wrapper.message)
             return
 
         move_input = data[1]
         if move_input == 'new':
             wrapper.reset()
-            await message.channel.send(wrapper.message)
+            await message.channel.send(**wrapper.message)
             return
 
         if move_input == 'help':
@@ -127,7 +149,7 @@ async def on_message(message):
             if error:
                 await message.channel.send(error)
             else:
-                await message.channel.send(wrapper.message)
+                await message.channel.send(**wrapper.message)
             return
 
         if move_input == 'forfeit':
@@ -153,12 +175,11 @@ async def on_message(message):
                     return
                 winner = game.move(move)
 
-        output = wrapper.board_string
         if winner:
-            output += wrapper.game_over(winner)
+            await message.channel.send(**wrapper.game_over(winner))
         else:
-            output += wrapper.player_string
-        await message.channel.send(output)
+            await message.channel.send(**wrapper.message)
+
 
 # Read Discord bot token as first command line argument
 if len(sys.argv) < 2:

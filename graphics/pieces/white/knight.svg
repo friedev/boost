@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <filter id="shadow">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="16" />
+    <feMerge>
+      <feMergeNode />
+      <feMergeNode in="SourceGraphic" />
+    </feMerge>
+  </filter>
+  <circle fill="rgba(255, 255, 255, 1)" cx="256" cy="256" r="224" filter="url(#shadow)" />
+  <path d="M 256 416
+  	   C 316 399 365 304 365 147
+  	   C 331 177 274 126 256 96
+  	   C 238 126 181 177 147 147
+  	   C 147 304 196 399 256 416
+  	   z" fill="rgba(0, 0, 0, 1)" stroke="rgba(0, 0, 0, 1)" stroke-width="12" stroke-linejoin="round" />
+  <path d="M 256 352
+  	   C 292 342 321 285 321 191
+  	   C 301 209 267 178 256 160
+  	   C 245 178 211 209 191 191
+  	   C 191 285 220 342 256 352
+  	   z" fill="rgba(255, 255, 255, 1)" stroke="rgba(255, 255, 255, 1)" stroke-width="12" stroke-linejoin="round" />
+</svg>
