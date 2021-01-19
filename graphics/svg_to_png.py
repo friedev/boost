@@ -13,6 +13,8 @@ RENDERER_CANDIDATES = (
         '$width',
         '-h',
         '$height',
+        '-b',
+        '#$background',
         '-o',
         '$png_filename',
         '$svg_filename',
