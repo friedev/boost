@@ -3,11 +3,40 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from subprocess import run, CalledProcessError
+from string import Template
 
 
 RENDERER_CANDIDATES = (
-    'chromium',
-    'chrome',
+    [
+        'rsvg-convert',
+        '-w',
+        '$width',
+        '-h',
+        '$height',
+        '-o',
+        '$png_filename',
+        '$svg_filename',
+    ],
+    [
+        'chromium',
+        '--incognito',
+        '--headless',
+        '--hide-scrollbars',
+        '--window-size=${width},${height}',
+        '--default-background-color=${background}',
+        '--screenshot=${png_filename}',
+        '$svg_filename',
+    ],
+    [
+        'chrome',
+        '--incognito',
+        '--headless',
+        '--hide-scrollbars',
+        '--window-size=${width},${height}',
+        '--default-background-color=${background}',
+        '--screenshot=${png_filename}',
+        '$svg_filename',
+    ],
 )
 
 
@@ -21,25 +50,24 @@ def render_as_png(svg, width, height, background='ffffffff'):
     with NamedTemporaryFile('w', suffix='.png', dir=Path(), delete=False) as png_file:
         pass
     try:
-        for renderer in RENDERER_CANDIDATES:
+        for renderer_template in RENDERER_CANDIDATES:
             try:
-                run([
-                    renderer,
-                    '--incognito',
-                    '--headless',
-                    '--hide-scrollbars',
-                    f'--window-size={width},{height}',
-                    f'--default-background-color={background}',
-                    f'--screenshot={png_file.name}',
-                    svg_file.name,
-                ], check=True)
+                renderer = []
+                for arg in renderer_template:
+                    renderer.append(Template(arg).substitute(
+                        width=str(width),
+                        height=str(height),
+                        background=background,
+                        png_filename=png_file.name,
+                        svg_filename=svg_file.name))
+                run(renderer, check=True)
             except (FileNotFoundError, CalledProcessError):
                 pass
             else:
                 with open(png_file.name, 'rb') as file:
                     return file.read()
         raise RendererNotFoundError(
-            'Unable to find Chromium-based browser in PATH with which to render an SVG.',
+            'Unable to find a suitable SVG renderer in PATH.',
         )
     finally:
         Path(svg_file.name).unlink()

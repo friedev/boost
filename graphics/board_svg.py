@@ -30,6 +30,12 @@ PIECE_FILENAMES = {
     'Tower': 'tower.svg',
 }
 
+# If true, use "xlink:href" instead of just "href" in SVG <image> tags
+# If the renderer is crashing, or the board is rendering without any pieces,
+# try toggling this flag
+# TODO convert to command line argument
+XLINK = False
+
 
 def prettify_file(x):
     return ascii_lowercase[x]
@@ -121,17 +127,17 @@ def create_board_markings(scale, width, height):
             results.append(create_dot(scale, x, y, height - 1))
     return '\n'.join(results)
 
-def create_piece(scale, x, y, max_y, image_path):
+def create_piece(scale, x, y, max_y, image_path, xlink=XLINK):
     return f'''
   <image
     x="{scale * x}"
     y="{scale * (max_y - y)}"
     width="{scale}"
     height="{scale}"
-    href="{image_path.as_uri()}" />
+    {'xlink:' if xlink else ''}href="{image_path.as_uri()}" />
 '''
 
-def create_pieces(scale, board):
+def create_pieces(scale, board, xlink=XLINK):
     max_y = board.height - 1
     results = []
     for cell in board.cells:
@@ -143,10 +149,11 @@ def create_pieces(scale, board):
                 max_y - cell.row,
                 max_y,
                 get_image_path(piece),
+                xlink
             ))
     return '\n'.join(results)
 
-def create_board(rectangle_width, rectangle_height, board):
+def create_board(rectangle_width, rectangle_height, board, xlink=XLINK):
     scale = min(rectangle_width / board.width, rectangle_height / board.height)
     bleed = scale * (2 * UNSCALED_FONT_HEIGHT) / min(board.width, board.height)
     view_box = f'{-bleed * board.width} {-bleed * board.height} ' + \
