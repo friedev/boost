@@ -58,7 +58,7 @@ import random
 import os
 from enum import Enum
 
-COLOR = False
+COLOR = True
 try:
     from termcolor import colored
 except ImportError:
