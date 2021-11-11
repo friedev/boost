@@ -25,7 +25,7 @@ try:
 except ImportError:
     COLOR = False
 
-SOLO_BOARD = """
+SOLO_BOARD = '''
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
@@ -35,9 +35,9 @@ SOLO_BOARD = """
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P1 P1 P1 P1
-"""
+'''
 
-P2_BOARD = """
+P2_BOARD = '''
 P2 P2 P2 P2 .  P2 P2 P2 P2
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
@@ -47,9 +47,9 @@ P2 P2 P2 P2 .  P2 P2 P2 P2
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P1 P1 P1 P1
-"""
+'''
 
-P2_BOARD_MINI = """
+P2_BOARD_MINI = '''
 .  .  .  P2 P2 P2 P2
 .  .  .  .  .  .  .
 .  .  .  .  .  .  .
@@ -57,9 +57,9 @@ P2_BOARD_MINI = """
 .  .  .  .  .  .  .
 .  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .
-"""
+'''
 
-P2_BOARD_QUICKSTART = """
+P2_BOARD_QUICKSTART = '''
 .  .  P2 .  .  .  P2 .  .
 .  P2 T2 P2 .  P2 T2 P2 .
 .  .  P2 .  .  .  P2 .  .
@@ -69,9 +69,9 @@ P2_BOARD_QUICKSTART = """
 .  .  P1 .  .  .  P1 .  .
 .  P1 T1 P1 .  P1 T1 P1 .
 .  .  P1 .  .  .  P1 .  .
-"""
+'''
 
-P3_BOARD = """
+P3_BOARD = '''
 P2 P2 P2 P2 .  P3 P3 P3 P3
 .  .  .  .  .  .  .  .  .
 P2 .  .  .  .  .  .  .  P3
@@ -81,9 +81,9 @@ P2 .  .  .  .  .  .  .  P3
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P1 P1 P1 P1
-"""
+'''
 
-P4_BOARD = """
+P4_BOARD = '''
 P2 P2 P2 P2 .  P4 P4 P4 P4
 .  .  .  .  .  .  .  .  .
 P2 .  .  .  .  .  .  .  P4
@@ -93,9 +93,9 @@ P1 .  .  .  .  .  .  .  P3
 P1 .  .  .  .  .  .  .  P3
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P3 P3 P3 P3
-"""
+'''
 
-P4_BOARD_MINIMAL = """
+P4_BOARD_MINIMAL = '''
 P2 .  .  .  .  P3 P3 P3 P3
 P2 .  .  .  .  .  .  .  .
 P2 .  .  .  .  .  .  .  .
@@ -105,48 +105,48 @@ P2 .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  P4
 .  .  .  .  .  .  .  .  P4
 P1 P1 P1 P1 .  .  .  .  P4
-"""
+'''
 
 # P1 can win a tower victory with d1c2
-DEBUG_BOARD_TOWER = """
+DEBUG_BOARD_TOWER = '''
 .  D0 .  .
 D0 T1 .  P1
 .  D0 .  D0
-"""
+'''
 
 # P1 can win a capture victory with a4b3
-DEBUG_BOARD_CAPTURE_TOWER = """
+DEBUG_BOARD_CAPTURE_TOWER = '''
 P1 T1
 .  .
 P2 T2
 .  D0
-"""
+'''
 
 # P1 can win a capture victory with a3c3
-DEBUG_BOARD_CAPTURE_PAWN = """
+DEBUG_BOARD_CAPTURE_PAWN = '''
 P1 .  .  .
 P2 P2 P2 P2
 P1 P1 P1 P1
-"""
+'''
 
 # P1 can defeat P2, P3, and P4 with b5c3
 # The captures should be processed before P2/P3/P4 win a tower victory!
-DEBUG_BOARD_TRIPLE_DEFEAT = """
+DEBUG_BOARD_TRIPLE_DEFEAT = '''
 P1 D0 .  T1 P3
 P2 D0 .  D0 P4
 D0 T2 .  T3 D0
 .  D0 T4 D0 .
 .  .  D0 .  .
-"""
+'''
 
 # P1 can defeat P2 with a4b3
 # Turn order should skip to P3
-DEBUG_BOARD_DEFEATED = """
+DEBUG_BOARD_DEFEATED = '''
 P1 T1 P3
 .  .  .
 P2 T2 .
 .  D0 T3
-"""
+'''
 
 
 class Ruleset:
@@ -396,7 +396,7 @@ class Board:
             file_labels += f'{chr(col + 65)}' + (self.cell_width - 1) * ' '
         string = file_labels + '\n'
         horizontal_border = '─' * (self.cell_width * len(self.board[0]) - 1)
-        string += f" ┌{horizontal_border}┐\n"
+        string += f' ┌{horizontal_border}┐\n'
         for row in range(len(self.board)):
             row_string = f'{len(self.board) - row}'
             string += row_string + '│'
@@ -417,7 +417,7 @@ class Board:
                 else:
                     string += '│'
             string += row_string + '\n'
-        string += f" └{horizontal_border}┘\n"
+        string += f' └{horizontal_border}┘\n'
         string += file_labels
         return string
 

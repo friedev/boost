@@ -62,7 +62,7 @@ class GameWrapper:
 
     @property
     def board_string(self):
-        return f"```{self.game.board.pretty}```"
+        return f'```{self.game.board.pretty}```'
 
     @property
     def player_string(self):
