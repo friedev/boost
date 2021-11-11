@@ -1,5 +1,3 @@
-# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
-
 # Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -187,6 +185,7 @@ P2 T2 .
 .  D0 T3
 """
 
+
 class Ruleset:
     def __init__(self, board_string, width, height, players, dragons):
         assert board_string
@@ -210,6 +209,7 @@ class Ruleset:
     def create_game(self):
         return Game(self.create_board(), self.players)
 
+
 class Rulesets(Enum):
     P2 = Ruleset(P2_BOARD, 9, 9, 2, 7)
     SOLO = Ruleset(SOLO_BOARD, 9, 9, 1, 7)
@@ -225,6 +225,7 @@ class Rulesets(Enum):
     DEBUG_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN, 4, 3, 2, 0)
     DEBUG_TRIPLE_DEFEAT = Ruleset(DEBUG_BOARD_TRIPLE_DEFEAT, 5, 5, 4, 0)
     DEBUG_DEFEATED = Ruleset(DEBUG_BOARD_DEFEATED, 3, 4, 3, 0)
+
 
 DEFAULT_RULESET = Rulesets.P2.value
 
@@ -324,7 +325,8 @@ class Piece:
 
     def __eq__(self, other):
         if isinstance(other, Piece):
-            return self.owner == other.owner and self.piece_type == other.piece_type
+            return self.owner == other.owner and\
+                   self.piece_type == other.piece_type
         return False
 
     def __hash__(self):
@@ -346,7 +348,8 @@ class Piece:
     def valid(self):
         return self.owner >= 0 and\
                 self.piece_type in PieceTypes\
-                and (self.owner == DRAGON_OWNER) == (self.piece_type == PieceTypes.DRAGON)
+                and (self.owner == DRAGON_OWNER) ==\
+                (self.piece_type == PieceTypes.DRAGON)
 
     @staticmethod
     def parse(string):
@@ -514,7 +517,8 @@ class Board:
         self.owners = 0
         for line in string.splitlines():
             if row < len(self.board):
-                for (piece_type_string, owner_string) in zip(line[0::], line[1::]):
+                for (piece_type_string, owner_string) in\
+                        zip(line[0::], line[1::]):
                     if col < len(self.board[row]):
                         piece_string = piece_type_string + owner_string
                         piece = Piece.parse(piece_string)
@@ -543,14 +547,14 @@ class Board:
                 if not self.board[row][col]:
                     available_cells.append(Cell(row, col))
         remaining_dragons = dragons
-        # To place an odd number of dragons, we have to place one in the middle,
-        # since it's the only non-mirrored cell
+        # To place an odd number of dragons, we have to place one in the
+        # middle, since it's the only non-mirrored cell
         dragon = Piece(DRAGON_OWNER, PieceTypes.DRAGON)
         if dragons % 2 != 0:
             if self.board[middle_row][middle_col]:
-                raise ValueError(\
-                        'Cannot place an odd number of dragons on this board' +\
-                        '(center must be unoccupied)')
+                raise ValueError(
+                        'Cannot place an odd number of dragons on this ' +
+                        'board (center must be unoccupied)')
             self.board[middle_row][middle_col] = dragon
             remaining_dragons -= 1
         while remaining_dragons > 0:
@@ -566,9 +570,9 @@ class Board:
     def in_bounds(self, cell):
         assert cell
         return cell.row >= 0 and\
-                cell.row < len(self.board) and\
-                cell.col >= 0 and\
-                cell.col < len(self.board[cell.row])
+            cell.row < len(self.board) and\
+            cell.col >= 0 and\
+            cell.col < len(self.board[cell.row])
 
     def get_piece(self, cell):
         if not self.in_bounds(cell):
@@ -590,7 +594,8 @@ class Board:
         # A* with Manhattan distance heuristic (cell_distance)
         boost = self.get_boost(move.start)
         worklist = PriorityQueue()
-        worklist.insert(PathVertex(move.start, [], cell_distance(move.start, move.end)))
+        worklist.insert(PathVertex(move.start, [],
+                        cell_distance(move.start, move.end)))
 
         while not worklist.is_empty:
             workitem = worklist.delete()
@@ -603,10 +608,12 @@ class Board:
 
             for neighbor in workitem.cell.neighbors:
                 piece = self.get_piece(neighbor)
-                if (not piece or neighbor == move.end) and not neighbor in workitem.path:
-                    worklist.insert(PathVertex(neighbor,\
-                            workitem.path + [neighbor],\
-                            len(workitem.path) + 1 + cell_distance(neighbor, move.end)))
+                if (not piece or neighbor == move.end) and\
+                        neighbor not in workitem.path:
+                    worklist.insert(PathVertex(neighbor,
+                                    workitem.path + [neighbor],
+                                    len(workitem.path) + 1 +
+                                        cell_distance(neighbor, move.end)))
 
         return False
 
@@ -631,7 +638,9 @@ class Board:
 
     def can_promote_knight(self, cell, owner):
         piece = self.get_piece(cell)
-        if not piece or piece.owner != owner or piece.piece_type != PieceTypes.PAWN:
+        if not piece or\
+                piece.owner != owner or\
+                piece.piece_type != PieceTypes.PAWN:
             return False
         pieces = self.pieces
         knight = Piece(owner, PieceTypes.KNIGHT)
@@ -658,15 +667,19 @@ class Board:
                 return ''
             if self.can_promote_knight(move.start, owner):
                 return ''
-            return 'You cannot build a tower here nor promote a pawn to a knight here.'
+            return 'You cannot build a tower here nor promote a pawn to a ' +\
+                   'knight here.'
         if not piece:
-            error = f'There is no piece at {self.format_cell(move.start)} to move.'
+            error = f'There is no piece at {self.format_cell(move.start)} ' +\
+                     'to move.'
         elif piece.piece_type == PieceTypes.DRAGON and\
                 not self.can_move_dragon(move.start, owner):
-            error = f'To move the {piece.name} at {self.format_cell(move.start)}, ' +\
+            error = f'To move the {piece.name} at ' +\
+                    f'{self.format_cell(move.start)}, ' +\
                     'you must have an adjacent piece.'
         elif piece.owner != owner and piece.owner != DRAGON_OWNER:
-            error = f'You are not the owner of the {piece.name} at {self.format_cell(move.start)}.'
+            error = f'You are not the owner of the {piece.name} at ' +\
+                    f'{self.format_cell(move.start)}.'
         elif piece.piece_type == PieceTypes.TOWER:
             error = 'Towers cannot move.'
         elif not self.path_exists(move):
@@ -685,22 +698,24 @@ class Board:
         return not self.get_move_error(move, owner)
 
     def capture(self, cell, owner):
-        # Processes captures made by the piece moved to the given cell by the given owner
+        # Processes captures made by the piece moved to the given cell by the
+        # given owner
         piece = self.get_piece(cell)
         assert piece
-        assert piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON
+        assert piece.piece_type == PieceTypes.PAWN or\
+               piece.piece_type == PieceTypes.DRAGON
         captures = 0
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
             if neighbor_piece\
                     and neighbor_piece.owner != owner\
                     and neighbor_piece.owner != DRAGON_OWNER:
-                flank = Cell(neighbor.row + (neighbor.row - cell.row),\
-                        neighbor.col + (neighbor.col - cell.col))
+                flank = Cell(neighbor.row + (neighbor.row - cell.row),
+                             neighbor.col + (neighbor.col - cell.col))
                 flanking_piece = self.get_piece(flank)
                 if flanking_piece and\
-                        (flanking_piece.owner == owner or\
-                        flanking_piece.owner == DRAGON_OWNER):
+                        (flanking_piece.owner == owner or
+                         flanking_piece.owner == DRAGON_OWNER):
                     self.set_piece(neighbor, None)
                     captures += 1
         return captures
@@ -752,10 +767,12 @@ class Board:
             piece = self.get_piece(move.start)
             if not piece:
                 # Build tower
-                self.board[move.start.row][move.start.col] = Piece(owner, PieceTypes.TOWER)
+                self.board[move.start.row][move.start.col] =\
+                        Piece(owner, PieceTypes.TOWER)
             else:
                 # Promote knight
-                self.board[move.start.row][move.start.col] = Piece(owner, PieceTypes.KNIGHT)
+                self.board[move.start.row][move.start.col] =\
+                        Piece(owner, PieceTypes.KNIGHT)
         else:
             # Move piece
             piece = self.board[move.start.row][move.start.col]
@@ -768,7 +785,8 @@ class Board:
             if piece.piece_type == PieceTypes.KNIGHT and target:
                 captures = 1
             # Check for pawn or dragon capture
-            elif piece.piece_type == PieceTypes.PAWN or piece.piece_type == PieceTypes.DRAGON:
+            elif piece.piece_type == PieceTypes.PAWN or\
+                    piece.piece_type == PieceTypes.DRAGON:
                 captures = self.capture(move.end, owner)
             # Check for capture victory if any pieces were captured
             if captures > 0:
@@ -777,7 +795,8 @@ class Board:
                     return winner
 
             # Check for tower victory if a dragon was moved
-            # Must be checked after captures in case a player captured a tower by moving a fourth dragon next to it
+            # Must be checked after captures in case a player captured a tower
+            # by moving a fourth dragon next to it
             if TOWER_VICTORY and piece.piece_type == PieceTypes.DRAGON:
                 winner = self.tower_winner
                 if winner:
@@ -869,8 +888,8 @@ def main():
             try:
                 move = game.board.parse_move(move_input)
             except (ValueError, IndexError):
-                error = 'Bad move format. Moves should be given in chess notation.\n'\
-                        + 'e.g. "a1b2" to move from A1 to B2.'
+                error = 'Bad move format. Moves should be given in chess ' +\
+                        'notation.\ne.g. "a1b2" to move from A1 to B2.'
             else:
                 error = game.get_move_error(move)
                 if not error:

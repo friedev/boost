@@ -43,8 +43,8 @@ boost-py is being developed by [Maugrift](https://maugrift.com) as a fun side pr
 If you want to submit a PR, please follow these guidelines:
 
 - Run the game (both CLI and Discord bot if possible) to check for bugs. You can utilize any of the applicable debug rulesets in `boost.py` to check certain hard-to-test conditions, such as victory.
-- Copy the Pylint header and license notice from `boost.py` into any new Python files you create.
-- Run `pylint` (or `pylint3`) on all of the Python files you've changed and ensure there are as few lint issues as possible.
+- Copy the license notice from `boost.py` into any new Python files you create.
+- Run `flake8` on all of the Python files you've changed and ensure there are as few lint issues as possible.
 
 If you want to contribute but aren't sure what to work on, you can find a temporary list of tasks in a comment in `boost.py`.
 
