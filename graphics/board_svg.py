@@ -1,5 +1,3 @@
-# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
-
 # Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,8 +16,8 @@
 from string import ascii_lowercase
 from pathlib import Path
 
-# For traceabilty to the code in `…/boost-app/src/features/play/board.js` in the
-# original PWA, which scales everything to pixels for compatibility with
+# For traceabilty to the code in `…/boost-app/src/features/play/board.js` in
+# the original PWA, which scales everything to pixels for compatibility with
 # `react-flip-toolkit`, we also do the same here.  The UNSCALED_* constants
 # below are measured in points on the board, whereas the SCALED_* constants are
 # measured in pixels.
@@ -57,8 +55,10 @@ XLINK = False
 def prettify_file(x):
     return ascii_lowercase[x]
 
+
 def prettify_rank(y):
     return str(y + 1)
+
 
 def get_image_path(piece):
     result = PIECES_DIRECTORY
@@ -87,6 +87,7 @@ def create_surface(scale, width, height):
     filter="url(#shadow)" />
 '''
 
+
 def create_file(scale, x, length, name):
     return f'''
   <line
@@ -104,6 +105,7 @@ def create_file(scale, x, length, name):
     font-family="sans-serif"
     font-size="{scale * UNSCALED_FONT_HEIGHT}">{name}</text>
 '''
+
 
 def create_rank(scale, y, max_y, length, name):
     return f'''
@@ -123,6 +125,7 @@ def create_rank(scale, y, max_y, length, name):
     font-size="{scale * UNSCALED_FONT_HEIGHT}">{name}</text>
 '''
 
+
 def create_dot(scale, x, y, max_y):
     return f'''
 <circle
@@ -133,16 +136,19 @@ def create_dot(scale, x, y, max_y):
   fill="rgba(0, 0, 0, 1)" />
 '''
 
+
 def create_board_markings(scale, width, height):
     results = [create_surface(scale, width, height)]
     for x in range(width):
         results.append(create_file(scale, x, height, prettify_file(x)))
     for y in range(height):
-        results.append(create_rank(scale, y, height - 1, width, prettify_rank(y)))
+        results.append(create_rank(scale, y, height - 1, width,
+                       prettify_rank(y)))
     for x in range(width):
         for y in range(height):
             results.append(create_dot(scale, x, y, height - 1))
     return '\n'.join(results)
+
 
 def create_piece(scale, x, y, max_y, image_path, xlink=XLINK):
     return f'''
@@ -153,6 +159,7 @@ def create_piece(scale, x, y, max_y, image_path, xlink=XLINK):
     height="{scale}"
     {'xlink:' if xlink else ''}href="{image_path.as_uri()}" />
 '''
+
 
 def create_pieces(scale, board, xlink=XLINK):
     max_y = board.height - 1
@@ -170,11 +177,14 @@ def create_pieces(scale, board, xlink=XLINK):
             ))
     return '\n'.join(results)
 
+
 def create_board(rectangle_width, rectangle_height, board, xlink=XLINK):
     scale = min(rectangle_width / board.width, rectangle_height / board.height)
     bleed = scale * (2 * UNSCALED_FONT_HEIGHT) / min(board.width, board.height)
     view_box = f'{-bleed * board.width} {-bleed * board.height} ' + \
-               f'{(scale + 2 * bleed) * board.width} {(scale + 2 * bleed) * board.height}'
+               f'{(scale + 2 * bleed) * board.width} ' +\
+               f'{(scale + 2 * bleed) * board.height}'
     markings = create_board_markings(scale, board.width, board.height)
     pieces = create_pieces(scale, board)
-    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{view_box}">{markings}{pieces}</svg>'
+    return '<svg xmlns="http://www.w3.org/2000/svg" ' +\
+           f'viewBox="{view_box}">{markings}{pieces}</svg>'

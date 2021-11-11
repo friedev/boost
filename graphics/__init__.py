@@ -1,5 +1,3 @@
-# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
-
 # Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -19,10 +17,11 @@ from io import BytesIO
 from discord import File
 
 from .board_svg import create_board
-from .svg_to_png import render_as_png, RendererNotFoundError
+from .svg_to_png import render_as_png
 
 
-def render_for_discord(board, filename, rectangle_width, rectangle_height, background):
+def render_for_discord(board, filename, rectangle_width, rectangle_height,
+                       background):
     svg = create_board(rectangle_width, rectangle_height, board)
     png = render_as_png(svg, rectangle_width, rectangle_height, background)
     return File(BytesIO(png), filename=filename)

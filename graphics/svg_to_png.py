@@ -1,5 +1,4 @@
 #! /usr/bin/env python3
-# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 # Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
 #
@@ -63,9 +62,11 @@ class RendererNotFoundError(OSError):
 
 
 def render_as_png(svg, width, height, background='ffffffff'):
-    with NamedTemporaryFile('w', suffix='.svg', dir=Path(), delete=False) as svg_file:
+    with NamedTemporaryFile('w', suffix='.svg', dir=Path(), delete=False)\
+            as svg_file:
         svg_file.write(svg)
-    with NamedTemporaryFile('w', suffix='.png', dir=Path(), delete=False) as png_file:
+    with NamedTemporaryFile('w', suffix='.png', dir=Path(), delete=False)\
+            as png_file:
         pass
     try:
         for renderer_template in RENDERER_CANDIDATES:

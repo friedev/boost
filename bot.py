@@ -1,5 +1,3 @@
-# pylint: disable=missing-docstring,missing-module-docstring,missing-class-docstring,missing-function-docstring,unused-wildcard-import
-
 # Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,7 +14,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import discord
-from boost import *
+import sys
+from boost import DEFAULT_RULESET
 from graphics import render_for_discord, RendererNotFoundError
 
 HELP = '''**Commands:**
@@ -42,6 +41,7 @@ DUPLICATE_PLAYERS = True
 COLOR = False
 BOARD_IMAGE_SIZE = 1024
 BOARD_IMAGE_BACKGROUND_RGBA = 'dededeff'
+
 
 class GameWrapper:
     def __init__(self, ruleset):
@@ -100,12 +100,15 @@ class GameWrapper:
         self.reset()
         return result
 
+
 client = discord.Client()
 wrappers = {}
+
 
 @client.event
 async def on_ready():
     print('Logged in as {0.user}'.format(client))
+
 
 @client.event
 async def on_message(message):
@@ -156,7 +159,9 @@ async def on_message(message):
             winner = wrapper.game.forfeit()
         else:
             if (wrapper.current_user and user != wrapper.current_user) or\
-                    (not DUPLICATE_PLAYERS and not wrapper.current_user and user in wrapper.users):
+                    (not DUPLICATE_PLAYERS and
+                     not wrapper.current_user and
+                     user in wrapper.users):
                 await message.channel.send('It is not your turn to play.')
                 return
             if not wrapper.current_user:
@@ -165,8 +170,9 @@ async def on_message(message):
             try:
                 move = game.board.parse_move(move_input)
             except ValueError:
-                await message.channel.send(\
-                        'Unrecognized command or move. For a list of commands, run `/boost help`.')
+                await message.channel.send('Unrecognized command or move. ' +
+                                           'For a list of commands, run ' +
+                                           '`/boost help`.')
                 return
             else:
                 error = game.get_move_error(move)
@@ -182,7 +188,8 @@ async def on_message(message):
 
 
 # Read Discord bot token as first command line argument
-if len(sys.argv) < 2:
-    print('Please enter your Discord bot token as a command line argument')
-    sys.exit(1)
-client.run(sys.argv[1])
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print('Please enter your Discord bot token as a command line argument')
+        sys.exit(1)
+    client.run(sys.argv[1])
