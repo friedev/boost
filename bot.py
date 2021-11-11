@@ -15,7 +15,8 @@
 
 import discord
 import sys
-from boost import DEFAULT_RULESET
+from boost import Game
+from rulesets import DEFAULT_RULESET
 from graphics import render_for_discord, RendererNotFoundError
 
 HELP = '''**Commands:**
@@ -46,11 +47,11 @@ BOARD_IMAGE_BACKGROUND_RGBA = 'dededeff'
 class GameWrapper:
     def __init__(self, ruleset):
         self.ruleset = ruleset
-        self.game = ruleset.create_game()
+        self.game = Game(ruleset)
         self.users = [None] * ruleset.players
 
     def reset(self):
-        self.game = self.ruleset.create_game()
+        self.game = Game(self.ruleset)
         self.users = [None] * self.ruleset.players
 
     @property
