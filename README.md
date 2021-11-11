@@ -46,7 +46,7 @@ If you want to submit a PR, please follow these guidelines:
 - Copy the license notice from `boost.py` into any new Python files you create.
 - Run `flake8` on all of the Python files you've changed and ensure there are as few lint issues as possible.
 
-If you want to contribute but aren't sure what to work on, you can find a temporary list of tasks in a comment in `boost.py`.
+If you want to contribute but aren't sure what to work on, you can find some ideas in `TODO.md`.
 
 ## License
 
