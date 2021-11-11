@@ -874,8 +874,8 @@ def main():
         error = ''
         try:
             move_input = input(f"Player {game.turn}'s Move: ")
-        except KeyboardInterrupt:
-            # Don't print a traceback on KeyboardInterrupt
+        except (KeyboardInterrupt, EOFError):
+            # Don't print a traceback on user-generated exit signals
             print()
             sys.exit(0)
         if move_input == 'exit':
