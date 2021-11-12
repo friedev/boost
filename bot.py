@@ -16,7 +16,7 @@
 import discord
 import sys
 from boost import Game
-from rulesets import DEFAULT_RULESET
+from rulesets import rulesets, DEFAULT_RULESET
 from graphics import render_for_discord, RendererNotFoundError
 
 HELP = '''**Commands:**
@@ -119,7 +119,7 @@ async def on_message(message):
     if message.content.startswith('/boost'):
         wrapper = wrappers.get(message.channel.id)
         if not wrapper:
-            wrapper = GameWrapper(DEFAULT_RULESET)
+            wrapper = GameWrapper(rulesets[DEFAULT_RULESET])
             wrappers[message.channel.id] = wrapper
 
         data = message.content.split()

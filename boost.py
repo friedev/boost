@@ -20,7 +20,7 @@ import os
 import random
 import sys
 
-import rulesets
+from rulesets import rulesets, DEFAULT_RULESET
 
 COLOR = True
 try:
@@ -660,8 +660,8 @@ def main():
     parser = argparse.ArgumentParser(description='A Python implementation ' +
                                      'of the Boost board game; CLI mode')
     parser.add_argument('-r', '--ruleset',
-                        default=rulesets.DEFAULT_RULESET,
-                        choices=rulesets.rulesets.keys(),
+                        default=DEFAULT_RULESET,
+                        choices=rulesets.keys(),
                         help='which ruleset to use')
     parser.add_argument('-c', '--color', dest='color', action='store_true')
     parser.add_argument('-C', '--no-color', dest='color', action='store_false')
@@ -677,7 +677,7 @@ def main():
         sys.exit(1)
 
     color = args.color
-    game = Game(rulesets.rulesets[args.ruleset], color)
+    game = Game(rulesets[args.ruleset], color)
     error = ''
     winner = None
     while True:
