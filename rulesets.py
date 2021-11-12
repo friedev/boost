@@ -126,7 +126,7 @@ P2 T2 .
 
 class Ruleset:
     def __init__(self, board_string, width, height, players, dragons,
-                 max_towers, knights_per_tower):
+                 max_towers, knights_per_tower, min_pieces, tower_victory):
         assert board_string
         assert width >= 1
         assert height >= 1
@@ -134,6 +134,7 @@ class Ruleset:
         assert dragons >= 0
         assert max_towers >= 0
         assert knights_per_tower >= 0
+        assert min_pieces > 0
         self.board_string = board_string
         self.width = width
         self.height = height
@@ -141,6 +142,8 @@ class Ruleset:
         self.dragons = dragons
         self.max_towers = max_towers
         self.knights_per_tower = knights_per_tower
+        self.min_pieces = min_pieces
+        self.tower_victory = tower_victory
 
     @property
     def owners(self):
@@ -154,7 +157,9 @@ class Rulesets(Enum):
                  players=2,
                  dragons=7,
                  max_towers=2,
-                 knights_per_tower=1)
+                 knights_per_tower=1,
+                 min_pieces=4,
+                 tower_victory=True)
 
     SOLO = Ruleset(SOLO_BOARD,
                    width=9,
@@ -162,7 +167,9 @@ class Rulesets(Enum):
                    players=1,
                    dragons=7,
                    max_towers=2,
-                   knights_per_tower=1)
+                   knights_per_tower=1,
+                   min_pieces=4,
+                   tower_victory=True)
 
     P2_DRAGONLESS = Ruleset(P2_BOARD,
                             width=9,
@@ -170,7 +177,9 @@ class Rulesets(Enum):
                             players=2,
                             dragons=0,
                             max_towers=2,
-                            knights_per_tower=1)
+                            knights_per_tower=1,
+                            min_pieces=4,
+                            tower_victory=True)
 
     P2_MINI = Ruleset(P2_BOARD_MINI,
                       width=7,
@@ -178,7 +187,9 @@ class Rulesets(Enum):
                       players=2,
                       dragons=7,
                       max_towers=2,
-                      knights_per_tower=1)
+                      knights_per_tower=1,
+                      min_pieces=4,
+                      tower_victory=True)
 
     P2_MINI_DRAGONLESS = Ruleset(P2_BOARD_MINI,
                                  width=7,
@@ -186,7 +197,9 @@ class Rulesets(Enum):
                                  players=2,
                                  dragons=0,
                                  max_towers=2,
-                                 knights_per_tower=1)
+                                 knights_per_tower=1,
+                                 min_pieces=4,
+                                 tower_victory=True)
 
     P2_QUICKSTART = Ruleset(P2_BOARD_QUICKSTART,
                             width=9,
@@ -194,7 +207,9 @@ class Rulesets(Enum):
                             players=2,
                             dragons=7,
                             max_towers=2,
-                            knights_per_tower=1)
+                            knights_per_tower=1,
+                            min_pieces=4,
+                            tower_victory=True)
 
     P3 = Ruleset(P3_BOARD,
                  width=9,
@@ -202,7 +217,9 @@ class Rulesets(Enum):
                  players=3,
                  dragons=7,
                  max_towers=2,
-                 knights_per_tower=1)
+                 knights_per_tower=1,
+                 min_pieces=4,
+                 tower_victory=True)
 
     P4 = Ruleset(P4_BOARD,
                  width=9,
@@ -210,7 +227,9 @@ class Rulesets(Enum):
                  players=4,
                  dragons=7,
                  max_towers=2,
-                 knights_per_tower=1)
+                 knights_per_tower=1,
+                 min_pieces=4,
+                 tower_victory=True)
 
     P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL,
                          width=9,
@@ -218,7 +237,9 @@ class Rulesets(Enum):
                          players=4,
                          dragons=7,
                          max_towers=2,
-                         knights_per_tower=1)
+                         knights_per_tower=1,
+                         min_pieces=4,
+                         tower_victory=True)
 
     DEBUG_TOWER = Ruleset(DEBUG_BOARD_TOWER,
                           width=4,
@@ -226,7 +247,9 @@ class Rulesets(Enum):
                           players=1,
                           dragons=0,
                           max_towers=2,
-                          knights_per_tower=1)
+                          knights_per_tower=1,
+                          min_pieces=4,
+                          tower_victory=True)
 
     DEBUG_CAPTURE_TOWER = Ruleset(DEBUG_BOARD_CAPTURE_TOWER,
                                   width=2,
@@ -234,7 +257,9 @@ class Rulesets(Enum):
                                   players=2,
                                   dragons=0,
                                   max_towers=2,
-                                  knights_per_tower=1)
+                                  knights_per_tower=1,
+                                  min_pieces=4,
+                                  tower_victory=True)
 
     DEBUG_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN,
                                  width=4,
@@ -242,7 +267,9 @@ class Rulesets(Enum):
                                  players=2,
                                  dragons=0,
                                  max_towers=2,
-                                 knights_per_tower=1)
+                                 knights_per_tower=1,
+                                 min_pieces=4,
+                                 tower_victory=True)
 
     DEBUG_TRIPLE_DEFEAT = Ruleset(DEBUG_BOARD_TRIPLE_DEFEAT,
                                   width=5,
@@ -250,7 +277,9 @@ class Rulesets(Enum):
                                   players=4,
                                   dragons=0,
                                   max_towers=2,
-                                  knights_per_tower=1)
+                                  knights_per_tower=1,
+                                  min_pieces=4,
+                                  tower_victory=True)
 
     DEBUG_DEFEATED = Ruleset(DEBUG_BOARD_DEFEATED,
                              width=3,
@@ -258,7 +287,9 @@ class Rulesets(Enum):
                              players=3,
                              dragons=0,
                              max_towers=2,
-                             knights_per_tower=1)
+                             knights_per_tower=1,
+                             min_pieces=4,
+                             tower_victory=True)
 
 
-DEFAULT_RULESET = Rulesets.P2.value
+DEFAULT_RULESET = Rulesets.DEBUG_TRIPLE_DEFEAT.value

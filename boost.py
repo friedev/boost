@@ -32,9 +32,6 @@ EMPTY_CELL_LONG = '. '
 DRAGON_OWNER = 0
 OWNER_COLORS = ['green', 'red', 'blue', 'yellow', 'magenta', 'cyan', 'white']
 
-MIN_PIECES = 4
-
-TOWER_VICTORY = True
 CLEAR = True
 
 
@@ -185,14 +182,11 @@ class PathVertex:
 
 
 class Board:
-    def __init__(self, width, height, string='', dragons=0, max_towers=2,
-                 knights_per_tower=1):
-        self.board = Board.empty(width, height)
-        self.load(string)
-        self.place_dragons(dragons)
-        self.dragons = dragons
-        self.max_towers = max_towers
-        self.knights_per_tower = knights_per_tower
+    def __init__(self, ruleset):
+        self.ruleset = ruleset
+        self.board = Board.empty(ruleset.width, ruleset.height)
+        self.load(ruleset.board_string)
+        self.place_dragons(ruleset.dragons)
         self.forfeited = set()
 
     @property
@@ -530,8 +524,11 @@ class Board:
                     if count:
                         owner_total += count
                 owner_towers = pieces.get(Piece(owner, PieceTypes.TOWER))
-                if (owner_towers and owner_total == owner_towers) or\
-                        (not owner_towers and owner_total < MIN_PIECES):
+                tower_victory_possible = self.ruleset.tower_victory and\
+                    owner_towers and\
+                    owner_total > owner_towers
+                if owner_total < self.ruleset.min_pieces and\
+                        not tower_victory_possible:
                     defeated.add(owner)
         return defeated | self.forfeited
 
@@ -595,7 +592,8 @@ class Board:
             # Check for tower victory if a dragon was moved
             # Must be checked after captures in case a player captured a tower
             # by moving a fourth dragon next to it
-            if TOWER_VICTORY and piece.piece_type == PieceTypes.DRAGON:
+            if self.ruleset.tower_victory and\
+                    piece.piece_type == PieceTypes.DRAGON:
                 winner = self.tower_winner
                 if winner:
                     return winner
@@ -603,21 +601,12 @@ class Board:
 
 
 class Game:
-    def __init__(self, ruleset=None, board=None, players=0, turn=1):
-        if ruleset is not None:
-            self.board = Board(ruleset.width, ruleset.height,
-                               ruleset.board_string, ruleset.dragons,
-                               ruleset.max_towers, ruleset.knights_per_tower)
-            self.players = ruleset.players
-        elif board is not None and players > 0:
-            self.board = board
-            self.players = players
-        else:
-            raise ValueError('A ruleset must be given, or a board and ' +
-                             'player count can be specified directly')
-
-        self.turn = turn
-        self.history = [str(board)]
+    def __init__(self, ruleset):
+        self.ruleset = ruleset
+        self.board = Board(ruleset)
+        self.players = ruleset.players
+        self.turn = 1
+        self.history = [str(self.board)]
 
     def get_next_turn(self):
         return self.turn + 1 if self.turn < self.players else 1
