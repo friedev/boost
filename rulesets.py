@@ -1,6 +1,5 @@
-from enum import Enum
-
-SOLO_BOARD = '''
+boards = {
+    'solo': '''
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
@@ -10,9 +9,9 @@ SOLO_BOARD = '''
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P1 P1 P1 P1
-'''
+''',
 
-P2_BOARD = '''
+    'p2': '''
 P2 P2 P2 P2 .  P2 P2 P2 P2
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
@@ -22,9 +21,9 @@ P2 P2 P2 P2 .  P2 P2 P2 P2
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P1 P1 P1 P1
-'''
+''',
 
-P2_BOARD_MINI = '''
+    'p2_mini': '''
 .  .  .  P2 P2 P2 P2
 .  .  .  .  .  .  .
 .  .  .  .  .  .  .
@@ -32,9 +31,9 @@ P2_BOARD_MINI = '''
 .  .  .  .  .  .  .
 .  .  .  .  .  .  .
 P1 P1 P1 P1 .  .  .
-'''
+''',
 
-P2_BOARD_QUICKSTART = '''
+    'p2_quickstart': '''
 .  .  P2 .  .  .  P2 .  .
 .  P2 T2 P2 .  P2 T2 P2 .
 .  .  P2 .  .  .  P2 .  .
@@ -44,9 +43,9 @@ P2_BOARD_QUICKSTART = '''
 .  .  P1 .  .  .  P1 .  .
 .  P1 T1 P1 .  P1 T1 P1 .
 .  .  P1 .  .  .  P1 .  .
-'''
+''',
 
-P3_BOARD = '''
+    'p3': '''
 P2 P2 P2 P2 .  P3 P3 P3 P3
 .  .  .  .  .  .  .  .  .
 P2 .  .  .  .  .  .  .  P3
@@ -56,9 +55,9 @@ P2 .  .  .  .  .  .  .  P3
 .  .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P1 P1 P1 P1
-'''
+''',
 
-P4_BOARD = '''
+    'p4': '''
 P2 P2 P2 P2 .  P4 P4 P4 P4
 .  .  .  .  .  .  .  .  .
 P2 .  .  .  .  .  .  .  P4
@@ -68,9 +67,9 @@ P1 .  .  .  .  .  .  .  P3
 P1 .  .  .  .  .  .  .  P3
 .  .  .  .  .  .  .  .  .
 P1 P1 P1 P1 .  P3 P3 P3 P3
-'''
+''',
 
-P4_BOARD_MINIMAL = '''
+    'p4_minimal': '''
 P2 .  .  .  .  P3 P3 P3 P3
 P2 .  .  .  .  .  .  .  .
 P2 .  .  .  .  .  .  .  .
@@ -80,48 +79,49 @@ P2 .  .  .  .  .  .  .  .
 .  .  .  .  .  .  .  .  P4
 .  .  .  .  .  .  .  .  P4
 P1 P1 P1 P1 .  .  .  .  P4
-'''
+''',
 
-# P1 can win a tower victory with d1c2
-DEBUG_BOARD_TOWER = '''
+    # P1 can win a tower victory with d1c2
+    'debug_tower': '''
 .  D0 .  .
 D0 T1 .  P1
 .  D0 .  D0
-'''
+''',
 
-# P1 can win a capture victory with a4b3
-DEBUG_BOARD_CAPTURE_TOWER = '''
+    # P1 can win a capture victory with a4b3
+    'debug_capture_tower': '''
 P1 T1
 .  .
 P2 T2
 .  D0
-'''
+''',
 
-# P1 can win a capture victory with a3c3
-DEBUG_BOARD_CAPTURE_PAWN = '''
+    # P1 can win a capture victory with a3c3
+    'debug_capture_pawn': '''
 P1 .  .  .
 P2 P2 P2 P2
 P1 P1 P1 P1
-'''
+''',
 
-# P1 can defeat P2, P3, and P4 with b5c3
-# The captures should be processed before P2/P3/P4 win a tower victory!
-DEBUG_BOARD_TRIPLE_DEFEAT = '''
+    # P1 can defeat P2, P3, and P4 with b5c3
+    # The captures should be processed before P2/P3/P4 win a tower victory!
+    'debug_triple_defeat': '''
 P1 D0 .  T1 P3
 P2 D0 .  D0 P4
 D0 T2 .  T3 D0
 .  D0 T4 D0 .
 .  .  D0 .  .
-'''
+''',
 
-# P1 can defeat P2 with a4b3
-# Turn order should skip to P3
-DEBUG_BOARD_DEFEATED = '''
+    # P1 can defeat P2 with a4b3
+    # Turn order should skip to P3
+    'debug_defeat_order': '''
 P1 T1 P3
 .  .  .
 P2 T2 .
 .  D0 T3
-'''
+''',
+}
 
 
 class Ruleset:
@@ -150,146 +150,147 @@ class Ruleset:
         return self.players + 1
 
 
-class Rulesets(Enum):
-    P2 = Ruleset(P2_BOARD,
-                 width=9,
-                 height=9,
-                 players=2,
-                 dragons=7,
-                 max_towers=2,
-                 knights_per_tower=1,
-                 min_pieces=4,
-                 tower_victory=True)
+rulesets = {
+    'p2': Ruleset(boards['p2'],
+                  width=9,
+                  height=9,
+                  players=2,
+                  dragons=7,
+                  max_towers=2,
+                  knights_per_tower=1,
+                  min_pieces=4,
+                  tower_victory=True),
 
-    SOLO = Ruleset(SOLO_BOARD,
-                   width=9,
-                   height=9,
-                   players=1,
-                   dragons=7,
-                   max_towers=2,
-                   knights_per_tower=1,
-                   min_pieces=4,
-                   tower_victory=True)
+    'solo': Ruleset(boards['solo'],
+                    width=9,
+                    height=9,
+                    players=1,
+                    dragons=7,
+                    max_towers=2,
+                    knights_per_tower=1,
+                    min_pieces=4,
+                    tower_victory=True),
 
-    P2_DRAGONLESS = Ruleset(P2_BOARD,
-                            width=9,
-                            height=9,
-                            players=2,
-                            dragons=0,
-                            max_towers=2,
-                            knights_per_tower=1,
-                            min_pieces=4,
-                            tower_victory=True)
+    'p2_dragonless': Ruleset(boards['p2'],
+                             width=9,
+                             height=9,
+                             players=2,
+                             dragons=0,
+                             max_towers=2,
+                             knights_per_tower=1,
+                             min_pieces=4,
+                             tower_victory=True),
 
-    P2_MINI = Ruleset(P2_BOARD_MINI,
-                      width=7,
-                      height=7,
-                      players=2,
-                      dragons=7,
-                      max_towers=2,
-                      knights_per_tower=1,
-                      min_pieces=4,
-                      tower_victory=True)
+    'p2_mini': Ruleset(boards['p2_mini'],
+                       width=7,
+                       height=7,
+                       players=2,
+                       dragons=7,
+                       max_towers=2,
+                       knights_per_tower=1,
+                       min_pieces=4,
+                       tower_victory=True),
 
-    P2_MINI_DRAGONLESS = Ruleset(P2_BOARD_MINI,
-                                 width=7,
-                                 height=7,
-                                 players=2,
-                                 dragons=0,
-                                 max_towers=2,
-                                 knights_per_tower=1,
-                                 min_pieces=4,
-                                 tower_victory=True)
-
-    P2_QUICKSTART = Ruleset(P2_BOARD_QUICKSTART,
-                            width=9,
-                            height=9,
-                            players=2,
-                            dragons=7,
-                            max_towers=2,
-                            knights_per_tower=1,
-                            min_pieces=4,
-                            tower_victory=True)
-
-    P3 = Ruleset(P3_BOARD,
-                 width=9,
-                 height=9,
-                 players=3,
-                 dragons=7,
-                 max_towers=2,
-                 knights_per_tower=1,
-                 min_pieces=4,
-                 tower_victory=True)
-
-    P4 = Ruleset(P4_BOARD,
-                 width=9,
-                 height=9,
-                 players=4,
-                 dragons=7,
-                 max_towers=2,
-                 knights_per_tower=1,
-                 min_pieces=4,
-                 tower_victory=True)
-
-    P4_MINIMAL = Ruleset(P4_BOARD_MINIMAL,
-                         width=9,
-                         height=9,
-                         players=4,
-                         dragons=7,
-                         max_towers=2,
-                         knights_per_tower=1,
-                         min_pieces=4,
-                         tower_victory=True)
-
-    DEBUG_TOWER = Ruleset(DEBUG_BOARD_TOWER,
-                          width=4,
-                          height=3,
-                          players=1,
-                          dragons=0,
-                          max_towers=2,
-                          knights_per_tower=1,
-                          min_pieces=4,
-                          tower_victory=True)
-
-    DEBUG_CAPTURE_TOWER = Ruleset(DEBUG_BOARD_CAPTURE_TOWER,
-                                  width=2,
-                                  height=4,
+    'p2_mini_dragonless': Ruleset(boards['p2_mini'],
+                                  width=7,
+                                  height=7,
                                   players=2,
                                   dragons=0,
                                   max_towers=2,
                                   knights_per_tower=1,
                                   min_pieces=4,
-                                  tower_victory=True)
+                                  tower_victory=True),
 
-    DEBUG_CAPTURE_PAWN = Ruleset(DEBUG_BOARD_CAPTURE_PAWN,
-                                 width=4,
-                                 height=3,
-                                 players=2,
-                                 dragons=0,
-                                 max_towers=2,
-                                 knights_per_tower=1,
-                                 min_pieces=4,
-                                 tower_victory=True)
+    'p2_quickstart': Ruleset(boards['p2_quickstart'],
+                             width=9,
+                             height=9,
+                             players=2,
+                             dragons=7,
+                             max_towers=2,
+                             knights_per_tower=1,
+                             min_pieces=4,
+                             tower_victory=True),
 
-    DEBUG_TRIPLE_DEFEAT = Ruleset(DEBUG_BOARD_TRIPLE_DEFEAT,
-                                  width=5,
-                                  height=5,
-                                  players=4,
+    'p3': Ruleset(boards['p3'],
+                  width=9,
+                  height=9,
+                  players=3,
+                  dragons=7,
+                  max_towers=2,
+                  knights_per_tower=1,
+                  min_pieces=4,
+                  tower_victory=True),
+
+    'p4': Ruleset(boards['p4'],
+                  width=9,
+                  height=9,
+                  players=4,
+                  dragons=7,
+                  max_towers=2,
+                  knights_per_tower=1,
+                  min_pieces=4,
+                  tower_victory=True),
+
+    'p4_minimal': Ruleset(boards['p4_minimal'],
+                          width=9,
+                          height=9,
+                          players=4,
+                          dragons=7,
+                          max_towers=2,
+                          knights_per_tower=1,
+                          min_pieces=4,
+                          tower_victory=True),
+
+    'debug_tower': Ruleset(boards['debug_tower'],
+                           width=4,
+                           height=3,
+                           players=1,
+                           dragons=0,
+                           max_towers=2,
+                           knights_per_tower=1,
+                           min_pieces=4,
+                           tower_victory=True),
+
+    'debug_capture_tower': Ruleset(boards['debug_capture_tower'],
+                                   width=2,
+                                   height=4,
+                                   players=2,
+                                   dragons=0,
+                                   max_towers=2,
+                                   knights_per_tower=1,
+                                   min_pieces=4,
+                                   tower_victory=True),
+
+    'debug_capture_pawn': Ruleset(boards['debug_capture_pawn'],
+                                  width=4,
+                                  height=3,
+                                  players=2,
                                   dragons=0,
                                   max_towers=2,
                                   knights_per_tower=1,
                                   min_pieces=4,
-                                  tower_victory=True)
+                                  tower_victory=True),
 
-    DEBUG_DEFEATED = Ruleset(DEBUG_BOARD_DEFEATED,
-                             width=3,
-                             height=4,
-                             players=3,
-                             dragons=0,
-                             max_towers=2,
-                             knights_per_tower=1,
-                             min_pieces=4,
-                             tower_victory=True)
+    'debug_triple_defeat': Ruleset(boards['debug_triple_defeat'],
+                                   width=5,
+                                   height=5,
+                                   players=4,
+                                   dragons=0,
+                                   max_towers=2,
+                                   knights_per_tower=1,
+                                   min_pieces=4,
+                                   tower_victory=True),
+
+    'debug_defeat_order': Ruleset(boards['debug_defeat_order'],
+                                  width=3,
+                                  height=4,
+                                  players=3,
+                                  dragons=0,
+                                  max_towers=2,
+                                  knights_per_tower=1,
+                                  min_pieces=4,
+                                  tower_victory=True),
+}
 
 
-DEFAULT_RULESET = Rulesets.DEBUG_TRIPLE_DEFEAT.value
+DEFAULT_RULESET = 'p2'

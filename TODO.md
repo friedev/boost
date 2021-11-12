@@ -1,7 +1,7 @@
 # TODO
 
 - Runtime configuration and persistence
-	- Choose ruleset via Discord and CLI arguments
+	- Choose ruleset via Discord
 	- Save/load game state to/from file
 	- Track player stats on Discord
 - Show information about previous move

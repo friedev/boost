@@ -13,12 +13,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import sys
+import argparse
+import enum
 import math
-import random
 import os
-from enum import Enum
-from rulesets import DEFAULT_RULESET
+import random
+import sys
+
+import rulesets
 
 COLOR = True
 try:
@@ -31,8 +33,6 @@ EMPTY_CELL_LONG = '. '
 
 DRAGON_OWNER = 0
 OWNER_COLORS = ['green', 'red', 'blue', 'yellow', 'magenta', 'cyan', 'white']
-
-CLEAR = True
 
 
 def distance(row1, col1, row2, col2):
@@ -95,7 +95,7 @@ class PieceType:
         self.symbol = symbol
 
 
-class PieceTypes(Enum):
+class PieceTypes(enum.Enum):
     DRAGON = PieceType('Dragon', 'D')
     PAWN = PieceType('Pawn', 'P')
     KNIGHT = PieceType('Knight', 'K')
@@ -182,8 +182,9 @@ class PathVertex:
 
 
 class Board:
-    def __init__(self, ruleset):
+    def __init__(self, ruleset, color=COLOR):
         self.ruleset = ruleset
+        self.color = color
         self.board = Board.empty(ruleset.width, ruleset.height)
         self.load(ruleset.board_string)
         self.place_dragons(ruleset.dragons)
@@ -216,7 +217,7 @@ class Board:
 
     @property
     def cell_width(self):
-        return 2 if COLOR or self.owners <= 3 else 3
+        return 2 if self.color or self.owners <= 3 else 3
 
     @property
     def pretty(self):
@@ -232,7 +233,7 @@ class Board:
             for col in range(len(self.board[row])):
                 piece = self.board[row][col]
                 if piece:
-                    if COLOR:
+                    if self.color:
                         string += colored(piece.symbol.upper(), piece.color)
                     else:
                         string += self.format_piece(piece)
@@ -601,9 +602,9 @@ class Board:
 
 
 class Game:
-    def __init__(self, ruleset):
+    def __init__(self, ruleset, color=COLOR):
         self.ruleset = ruleset
-        self.board = Board(ruleset)
+        self.board = Board(ruleset, color)
         self.players = ruleset.players
         self.turn = 1
         self.history = [str(self.board)]
@@ -656,12 +657,34 @@ class Game:
 
 
 def main():
-    game = Game(DEFAULT_RULESET)
+    parser = argparse.ArgumentParser(description='A Python implementation ' +
+                                     'of the Boost board game; CLI mode')
+    parser.add_argument('-r', '--ruleset',
+                        default=rulesets.DEFAULT_RULESET,
+                        choices=rulesets.rulesets.keys(),
+                        help='which ruleset to use')
+    parser.add_argument('-c', '--color', dest='color', action='store_true')
+    parser.add_argument('-C', '--no-color', dest='color', action='store_false')
+    parser.add_argument('-e', '--clear', dest='clear', action='store_true')
+    parser.add_argument('-E', '--no-clear', dest='clear', action='store_false')
+    parser.set_defaults(color=COLOR)
+    parser.set_defaults(clear=True)
+    args = parser.parse_args()
+
+    if args.color and not COLOR:
+        print('Color is not supported on this system', file=sys.stderr)
+        print('Install termcolor via pip for color support', file=sys.stderr)
+        sys.exit(1)
+
+    color = args.color
+    game = Game(rulesets.rulesets[args.ruleset], color)
     error = ''
     winner = None
     while True:
-        if CLEAR:
+        if args.clear:
             os.system('clear')
+        else:
+            print()
         print(game.board.pretty)
         if winner:
             print(f'Player {winner} won the game!')
