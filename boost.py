@@ -32,9 +32,6 @@ EMPTY_CELL_LONG = '. '
 DRAGON_OWNER = 0
 OWNER_COLORS = ['green', 'red', 'blue', 'yellow', 'magenta', 'cyan', 'white']
 
-MAX_TOWERS = 2
-KNIGHTS_PER_TOWER = 1
-DRAGONS = 7
 MIN_PIECES = 4
 
 TOWER_VICTORY = True
@@ -188,10 +185,14 @@ class PathVertex:
 
 
 class Board:
-    def __init__(self, width, height, string='', dragons=0):
+    def __init__(self, width, height, string='', dragons=0, max_towers=2,
+                 knights_per_tower=1):
         self.board = Board.empty(width, height)
         self.load(string)
         self.place_dragons(dragons)
+        self.dragons = dragons
+        self.max_towers = max_towers
+        self.knights_per_tower = knights_per_tower
         self.forfeited = set()
 
     @property
@@ -431,7 +432,7 @@ class Board:
             if not neighbor_piece or neighbor_piece.owner != owner:
                 return False
         owner_towers = self.pieces.get(Piece(owner, PieceTypes.TOWER), 0)
-        return owner_towers < MAX_TOWERS
+        return owner_towers < self.max_towers
 
     def can_promote_knight(self, cell, owner):
         piece = self.get_piece(cell)
@@ -444,7 +445,7 @@ class Board:
         tower = Piece(owner, PieceTypes.TOWER)
         if knight in pieces and\
                 tower in pieces\
-                and pieces[knight] >= pieces[tower] * KNIGHTS_PER_TOWER:
+                and pieces[knight] >= pieces[tower] * self.knights_per_tower:
             return False
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
@@ -605,7 +606,8 @@ class Game:
     def __init__(self, ruleset=None, board=None, players=0, turn=1):
         if ruleset is not None:
             self.board = Board(ruleset.width, ruleset.height,
-                               ruleset.board_string, ruleset.dragons)
+                               ruleset.board_string, ruleset.dragons,
+                               ruleset.max_towers, ruleset.knights_per_tower)
             self.players = ruleset.players
         elif board is not None and players > 0:
             self.board = board
