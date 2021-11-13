@@ -28,6 +28,8 @@ try:
 except ImportError:
     COLOR = False
 
+INFINITY = float('inf')
+
 EMPTY_CELL_SHORT = '.'
 EMPTY_CELL_LONG = '. '
 
@@ -276,12 +278,31 @@ class Board:
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 piece = self.get_piece(Cell(row, col))
-                if piece:
+                if piece is not None:
                     if piece in pieces:
                         pieces[piece] += 1
                     else:
                         pieces[piece] = 1
         return pieces
+
+    @property
+    def pieces(self):
+        pieces = []
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                piece = self.get_piece(Cell(row, col))
+                if piece is not None:
+                    pieces.append(piece)
+        return pieces
+
+    def get_owner_pieces(self, owner):
+        owner_pieces = []
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                piece = self.get_piece(Cell(row, col))
+                if piece is not None and piece.owner == owner:
+                    owner_pieces.append(piece)
+        return owner_pieces
 
     def parse_cell(self, string):
         row_string = string[0]
@@ -387,32 +408,36 @@ class Board:
                 boost += 1
         return boost
 
-    def path_exists(self, move):
+    def find_path(self, source, destination, distance=None):
         # A* with Manhattan distance heuristic (cell_distance)
-        boost = self.get_boost(move.start)
         worklist = PriorityQueue()
-        worklist.insert(PathVertex(move.start, [],
-                        cell_distance(move.start, move.end)))
+        worklist.insert(PathVertex(source, [],
+                                   cell_distance(source, destination)))
 
         while not worklist.is_empty:
             workitem = worklist.delete()
 
-            if len(workitem.path) > boost:
-                return False
+            if distance is not None and len(workitem.path) > distance:
+                return None
 
-            if len(workitem.path) == boost and workitem.cell == move.end:
-                return True
+            if (workitem.cell == destination and
+                    (distance is None or len(workitem.path) == distance)):
+                return workitem.path
 
             for neighbor in workitem.cell.neighbors:
                 piece = self.get_piece(neighbor)
-                if ((not piece or neighbor == move.end) and
+                if ((not piece or neighbor == destination) and
                         neighbor not in workitem.path):
                     worklist.insert(PathVertex(neighbor,
                                     workitem.path + [neighbor],
                                     len(workitem.path) + 1 +
-                                        cell_distance(neighbor, move.end)))
+                                        cell_distance(neighbor, destination)))
+        return None
 
-        return False
+    def path_exists(self, move):
+        return self.find_path(move.start,
+                              move.end,
+                              self.get_boost(move.start)) is not None
 
     def can_move_dragon(self, cell, owner):
         assert owner != DRAGON_OWNER
