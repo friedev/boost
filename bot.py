@@ -159,10 +159,10 @@ async def on_message(message):
         if move_input == 'forfeit':
             winner = wrapper.game.forfeit()
         else:
-            if (wrapper.current_user and user != wrapper.current_user) or\
+            if ((wrapper.current_user and user != wrapper.current_user) or
                     (not DUPLICATE_PLAYERS and
                      not wrapper.current_user and
-                     user in wrapper.users):
+                     user in wrapper.users)):
                 await message.channel.send('It is not your turn to play.')
                 return
             if not wrapper.current_user:

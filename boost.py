@@ -116,8 +116,8 @@ class Piece:
 
     def __eq__(self, other):
         if isinstance(other, Piece):
-            return self.owner == other.owner and\
-                   self.piece_type == other.piece_type
+            return (self.owner == other.owner and
+                    self.piece_type == other.piece_type)
         return False
 
     def __hash__(self):
@@ -137,10 +137,10 @@ class Piece:
 
     @property
     def valid(self):
-        return self.owner >= 0 and\
-                self.piece_type in PieceTypes\
-                and (self.owner == DRAGON_OWNER) ==\
-                (self.piece_type == PieceTypes.DRAGON)
+        return (self.owner >= 0 and
+                self.piece_type in PieceTypes
+                and (self.owner == DRAGON_OWNER) ==
+                (self.piece_type == PieceTypes.DRAGON))
 
     @staticmethod
     def parse(string):
@@ -182,13 +182,16 @@ class PathVertex:
 
 
 class Board:
-    def __init__(self, ruleset, color=COLOR):
+    def __init__(self, ruleset, color=COLOR, board=None, forfeited=set()):
         self.ruleset = ruleset
         self.color = color
         self.board = Board.empty(ruleset.width, ruleset.height)
-        self.load(ruleset.board_string)
-        self.place_dragons(ruleset.dragons)
-        self.forfeited = set()
+        if board:
+            self.board = board
+        else:
+            self.load(ruleset.board_string)
+            self.place_dragons(ruleset.dragons)
+        self.forfeited = forfeited
 
     @property
     def width(self):
@@ -212,7 +215,7 @@ class Board:
                     string += EMPTY_CELL_LONG
                 string += ' '
             string += '\n'
-        # Slice out trailing newline
+        # Slice off trailing newline
         return string[:-1]
 
     @property
@@ -268,15 +271,16 @@ class Board:
         return cells
 
     @property
-    def pieces(self):
+    def piece_counts(self):
         pieces = {}
-        for cell in self.cells:
-            piece = self.get_piece(cell)
-            if piece:
-                if piece in pieces:
-                    pieces[piece] += 1
-                else:
-                    pieces[piece] = 1
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                piece = self.get_piece(Cell(row, col))
+                if piece:
+                    if piece in pieces:
+                        pieces[piece] += 1
+                    else:
+                        pieces[piece] = 1
         return pieces
 
     def parse_cell(self, string):
@@ -362,10 +366,10 @@ class Board:
 
     def in_bounds(self, cell):
         assert cell
-        return cell.row >= 0 and\
-            cell.row < len(self.board) and\
-            cell.col >= 0 and\
-            cell.col < len(self.board[cell.row])
+        return (cell.row >= 0 and
+                cell.row < len(self.board) and
+                cell.col >= 0 and
+                cell.col < len(self.board[cell.row]))
 
     def get_piece(self, cell):
         if not self.in_bounds(cell):
@@ -401,8 +405,8 @@ class Board:
 
             for neighbor in workitem.cell.neighbors:
                 piece = self.get_piece(neighbor)
-                if (not piece or neighbor == move.end) and\
-                        neighbor not in workitem.path:
+                if ((not piece or neighbor == move.end) and
+                        neighbor not in workitem.path):
                     worklist.insert(PathVertex(neighbor,
                                     workitem.path + [neighbor],
                                     len(workitem.path) + 1 +
@@ -426,27 +430,28 @@ class Board:
             neighbor_piece = self.get_piece(neighbor)
             if not neighbor_piece or neighbor_piece.owner != owner:
                 return False
-        owner_towers = self.pieces.get(Piece(owner, PieceTypes.TOWER), 0)
+        owner_towers = self.piece_counts.get(Piece(owner, PieceTypes.TOWER), 0)
         return owner_towers < self.max_towers
 
     def can_promote_knight(self, cell, owner):
         piece = self.get_piece(cell)
-        if not piece or\
-                piece.owner != owner or\
-                piece.piece_type != PieceTypes.PAWN:
+        if (not piece or
+                piece.owner != owner or
+                piece.piece_type != PieceTypes.PAWN):
             return False
-        pieces = self.pieces
+        piece_counts = self.piece_counts
         knight = Piece(owner, PieceTypes.KNIGHT)
         tower = Piece(owner, PieceTypes.TOWER)
-        if knight in pieces and\
-                tower in pieces\
-                and pieces[knight] >= pieces[tower] * self.knights_per_tower:
+        if (knight in piece_counts and
+                tower in piece_counts and
+                piece_counts[knight] >= piece_counts[tower] *
+                self.knights_per_tower):
             return False
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
-            if neighbor_piece and\
-                    neighbor_piece.owner == owner and\
-                    neighbor_piece.piece_type == PieceTypes.TOWER:
+            if (neighbor_piece and
+                    neighbor_piece.owner == owner and
+                    neighbor_piece.piece_type == PieceTypes.TOWER):
                 return True
         return False
 
@@ -454,7 +459,6 @@ class Board:
         piece = self.get_piece(move.start)
         destination = self.get_piece(move.end)
         boost = self.get_boost(move.start)
-        error = ''
         if move.start == move.end:
             if self.can_build_tower(move.start, owner):
                 return ''
@@ -463,29 +467,29 @@ class Board:
             return 'You cannot build a tower here nor promote a pawn to a '\
                    'knight here.'
         if not piece:
-            error = f'There is no piece at {self.format_cell(move.start)} '\
-                     'to move.'
-        elif piece.piece_type == PieceTypes.DRAGON and\
-                not self.can_move_dragon(move.start, owner):
-            error = f'To move the {piece.name} at '\
-                    f'{self.format_cell(move.start)}, '\
-                    'you must have an adjacent piece.'
+            return f'There is no piece at {self.format_cell(move.start)} '\
+                    'to move.'
+        elif (piece.piece_type == PieceTypes.DRAGON and
+                not self.can_move_dragon(move.start, owner)):
+            return f'To move the {piece.name} at '\
+                   f'{self.format_cell(move.start)}, '\
+                   'you must have an adjacent piece.'
         elif piece.owner != owner and piece.owner != DRAGON_OWNER:
-            error = f'You are not the owner of the {piece.name} at '\
-                    f'{self.format_cell(move.start)}.'
+            return f'You are not the owner of the {piece.name} at '\
+                   f'{self.format_cell(move.start)}.'
         elif piece.piece_type == PieceTypes.TOWER:
-            error = 'Towers cannot move.'
+            return 'Towers cannot move.'
         elif not self.path_exists(move):
-            error = f'You must move this piece exactly {boost} cell(s).'
+            return f'You must move this piece exactly {boost} cell(s).'
         elif not self.in_bounds(move.end):
-            error = f'{self.format_cell(move.end)} is out of bounds.'
+            return f'{self.format_cell(move.end)} is out of bounds.'
         elif destination and piece.piece_type != PieceTypes.KNIGHT:
-            error = f'A {piece.name} cannot capture pieces directly.'
+            return f'A {piece.name} cannot capture pieces directly.'
         elif destination and destination.owner == owner:
-            error = 'You cannot capture your own piece.'
+            return 'You cannot capture your own piece.'
         elif destination and destination.piece_type == PieceTypes.DRAGON:
-            error = 'Dragons cannot be captured.'
-        return error
+            return 'Dragons cannot be captured.'
+        return ''
 
     def is_valid(self, move, owner):
         return not self.get_move_error(move, owner)
@@ -495,20 +499,20 @@ class Board:
         # given owner
         piece = self.get_piece(cell)
         assert piece
-        assert piece.piece_type == PieceTypes.PAWN or\
-               piece.piece_type == PieceTypes.DRAGON
+        assert (piece.piece_type == PieceTypes.PAWN or
+                piece.piece_type == PieceTypes.DRAGON)
         captures = 0
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
-            if neighbor_piece\
-                    and neighbor_piece.owner != owner\
-                    and neighbor_piece.owner != DRAGON_OWNER:
+            if (neighbor_piece and
+                    neighbor_piece.owner != owner and
+                    neighbor_piece.owner != DRAGON_OWNER):
                 flank = Cell(neighbor.row + (neighbor.row - cell.row),
                              neighbor.col + (neighbor.col - cell.col))
                 flanking_piece = self.get_piece(flank)
-                if flanking_piece and\
+                if (flanking_piece and
                         (flanking_piece.owner == owner or
-                         flanking_piece.owner == DRAGON_OWNER):
+                         flanking_piece.owner == DRAGON_OWNER)):
                     self.set_piece(neighbor, None)
                     captures += 1
         return captures
@@ -516,20 +520,20 @@ class Board:
     @property
     def defeated(self):
         defeated = set()
-        pieces = self.pieces
+        piece_counts = self.piece_counts
         for owner in range(self.owners):
             if owner != DRAGON_OWNER:
                 owner_total = 0
                 for piece_type in PieceTypes:
-                    count = pieces.get(Piece(owner, piece_type))
+                    count = piece_counts.get(Piece(owner, piece_type))
                     if count:
                         owner_total += count
-                owner_towers = pieces.get(Piece(owner, PieceTypes.TOWER))
-                tower_victory_possible = self.ruleset.tower_victory and\
-                    owner_towers and\
-                    owner_total > owner_towers
-                if owner_total < self.ruleset.min_pieces and\
-                        not tower_victory_possible:
+                owner_towers = piece_counts.get(Piece(owner, PieceTypes.TOWER))
+                tower_victory_possible = (self.ruleset.tower_victory and
+                                          owner_towers and
+                                          owner_total > owner_towers)
+                if (owner_total < self.ruleset.min_pieces and
+                        not tower_victory_possible):
                     defeated.add(owner)
         return defeated | self.forfeited
 
@@ -581,8 +585,8 @@ class Board:
             if piece.piece_type == PieceTypes.KNIGHT and target:
                 captures = 1
             # Check for pawn or dragon capture
-            elif piece.piece_type == PieceTypes.PAWN or\
-                    piece.piece_type == PieceTypes.DRAGON:
+            elif (piece.piece_type == PieceTypes.PAWN or
+                    piece.piece_type == PieceTypes.DRAGON):
                 captures = self.capture(move.end, owner)
             # Check for capture victory if any pieces were captured
             if captures > 0:
@@ -593,8 +597,8 @@ class Board:
             # Check for tower victory if a dragon was moved
             # Must be checked after captures in case a player captured a tower
             # by moving a fourth dragon next to it
-            if self.ruleset.tower_victory and\
-                    piece.piece_type == PieceTypes.DRAGON:
+            if (self.ruleset.tower_victory and
+                    piece.piece_type == PieceTypes.DRAGON):
                 winner = self.tower_winner
                 if winner:
                     return winner
