@@ -413,12 +413,14 @@ class Board:
                 return path
 
             for neighbor in path.end.neighbors:
-                piece = self.get_piece(neighbor)
-                if ((not piece or neighbor == destination) and
-                        neighbor not in path.path):
-                    worklist.put(Path(path.path + [neighbor],
-                                      len(path) + 1 +
-                                      cell_distance(neighbor, destination)))
+                if self.in_bounds(neighbor):
+                    piece = self.get_piece(neighbor)
+                    if ((piece is None or neighbor == destination) and
+                            neighbor not in path.path):
+                        worklist.put(Path(path.path + [neighbor],
+                                          len(path) + 1 +
+                                          cell_distance(neighbor,
+                                                        destination)))
         return None
 
     def path_exists(self, move):
