@@ -64,10 +64,12 @@ class PriorityQueue:
     def delete(self):
         if self.is_empty:
             raise IndexError
+
         best = 0
         for i in range(len(self.queue)):
             if self.queue[i] < self.queue[best]:
                 best = i
+
         item = self.queue[best]
         del self.queue[best]
         return item
@@ -140,8 +142,8 @@ class Piece:
     @property
     def valid(self):
         return (self.owner >= 0 and
-                self.piece_type in PieceTypes
-                and (self.owner == DRAGON_OWNER) ==
+                self.piece_type in PieceTypes and
+                (self.owner == DRAGON_OWNER) ==
                 (self.piece_type == PieceTypes.DRAGON))
 
     @staticmethod
@@ -346,6 +348,7 @@ class Board:
                                 self.owners = piece.owner
                         if piece or piece_string == EMPTY_CELL_LONG:
                             col += 1
+
             # Ignore blank lines
             if col > 0:
                 row += 1
@@ -451,10 +454,12 @@ class Board:
     def can_build_tower(self, cell, owner):
         if self.get_piece(cell):
             return False
+
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
             if not neighbor_piece or neighbor_piece.owner != owner:
                 return False
+
         owner_towers = self.piece_counts.get(Piece(owner, PieceTypes.TOWER), 0)
         return owner_towers < self.max_towers
 
@@ -464,6 +469,7 @@ class Board:
                 piece.owner != owner or
                 piece.piece_type != PieceTypes.PAWN):
             return False
+
         piece_counts = self.piece_counts
         knight = Piece(owner, PieceTypes.KNIGHT)
         tower = Piece(owner, PieceTypes.TOWER)
@@ -472,18 +478,17 @@ class Board:
                 piece_counts[knight] >= piece_counts[tower] *
                 self.knights_per_tower):
             return False
+
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
             if (neighbor_piece and
                     neighbor_piece.owner == owner and
                     neighbor_piece.piece_type == PieceTypes.TOWER):
                 return True
+
         return False
 
     def get_move_error(self, move, owner):
-        piece = self.get_piece(move.start)
-        destination = self.get_piece(move.end)
-        boost = self.get_boost(move.start)
         if move.start == move.end:
             if self.can_build_tower(move.start, owner):
                 return ''
@@ -491,6 +496,10 @@ class Board:
                 return ''
             return 'You cannot build a tower here nor promote a pawn to a '\
                    'knight here.'
+
+        piece = self.get_piece(move.start)
+        destination = self.get_piece(move.end)
+        boost = self.get_boost(move.start)
         if not piece:
             return f'There is no piece at {self.format_cell(move.start)} '\
                     'to move.'
@@ -613,6 +622,7 @@ class Board:
             elif (piece.piece_type == PieceTypes.PAWN or
                     piece.piece_type == PieceTypes.DRAGON):
                 captures = self.capture(move.end, owner)
+
             # Check for capture victory if any pieces were captured
             if captures > 0:
                 winner = self.capture_winner
