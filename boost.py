@@ -346,7 +346,7 @@ class Board:
         if dragons % 2 != 0:
             if self.board[middle_row][middle_col]:
                 raise ValueError(
-                        'Cannot place an odd number of dragons on this ' +
+                        'Cannot place an odd number of dragons on this '
                         'board (center must be unoccupied)')
             self.board[middle_row][middle_col] = dragon
             remaining_dragons -= 1
@@ -460,18 +460,18 @@ class Board:
                 return ''
             if self.can_promote_knight(move.start, owner):
                 return ''
-            return 'You cannot build a tower here nor promote a pawn to a ' +\
+            return 'You cannot build a tower here nor promote a pawn to a '\
                    'knight here.'
         if not piece:
-            error = f'There is no piece at {self.format_cell(move.start)} ' +\
+            error = f'There is no piece at {self.format_cell(move.start)} '\
                      'to move.'
         elif piece.piece_type == PieceTypes.DRAGON and\
                 not self.can_move_dragon(move.start, owner):
-            error = f'To move the {piece.name} at ' +\
-                    f'{self.format_cell(move.start)}, ' +\
+            error = f'To move the {piece.name} at '\
+                    f'{self.format_cell(move.start)}, '\
                     'you must have an adjacent piece.'
         elif piece.owner != owner and piece.owner != DRAGON_OWNER:
-            error = f'You are not the owner of the {piece.name} at ' +\
+            error = f'You are not the owner of the {piece.name} at '\
                     f'{self.format_cell(move.start)}.'
         elif piece.piece_type == PieceTypes.TOWER:
             error = 'Towers cannot move.'
@@ -657,7 +657,7 @@ class Game:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='A Python implementation ' +
+    parser = argparse.ArgumentParser(description='A Python implementation '
                                      'of the Boost board game; CLI mode')
     parser.add_argument('-r', '--ruleset',
                         default=DEFAULT_RULESET,
@@ -708,7 +708,7 @@ def main():
             try:
                 move = game.board.parse_move(move_input)
             except (ValueError, IndexError):
-                error = 'Bad move format. Moves should be given in chess ' +\
+                error = 'Bad move format. Moves should be given in chess '\
                         'notation.\ne.g. "a1b2" to move from A1 to B2.'
             else:
                 error = game.get_move_error(move)

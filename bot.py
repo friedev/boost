@@ -171,8 +171,8 @@ async def on_message(message):
             try:
                 move = game.board.parse_move(move_input)
             except ValueError:
-                await message.channel.send('Unrecognized command or move. ' +
-                                           'For a list of commands, run ' +
+                await message.channel.send('Unrecognized command or move. '
+                                           'For a list of commands, run '
                                            '`/boost help`.')
                 return
             else:
