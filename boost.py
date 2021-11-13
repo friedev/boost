@@ -129,7 +129,7 @@ class Piece:
 class Move:
     def __init__(self, start, end=None):
         self.start = start
-        self.end = end if end else start
+        self.end = end if end is not None else start
 
     def __eq__(self, other):
         if isinstance(other, Move):
@@ -283,12 +283,14 @@ class Board:
                     pieces.append(piece)
         return pieces
 
-    def get_owner_pieces(self, owner):
+    def get_owned_pieces(self, owners):
+        if not isinstance(owners, list):
+            owners = [owners]
         owner_pieces = []
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 piece = self.get_piece(Cell(row, col))
-                if piece is not None and piece.owner == owner:
+                if piece is not None and piece.owner in owners:
                     owner_pieces.append(piece)
         return owner_pieces
 
@@ -625,6 +627,56 @@ class Board:
                     return winner
         return None
 
+    def get_piece_moves(self, cell, owner=None):
+        piece = self.get_piece(cell)
+        if piece is None:
+            return []
+
+        if owner is None:
+            owner = piece.owner
+        elif (owner != piece.owner and
+                not (piece.owner == DRAGON_OWNER and
+                     self.can_move_dragon(cell, owner))):
+            return []
+
+        # Breadth-first search to find all possible moves
+        boost = self.get_boost(cell)
+        moves = []
+        worklist = queue.Queue()
+        worklist.put(Path([cell]))
+
+        while not worklist.empty():
+            path = worklist.get()
+
+            if len(path) == boost:
+                move = Move(path.start, path.end)
+                if self.is_valid(move, owner):
+                    moves.append(move)
+
+            if len(path) > boost:
+                return moves
+
+            for neighbor in path.end.neighbors:
+                if self.in_bounds(neighbor):
+                    piece = self.get_piece(neighbor)
+                    if ((piece is None or len(path) + 1 == boost) and
+                            neighbor not in path.path):
+                        worklist.put(Path(path.path + [neighbor]))
+        return moves
+
+    def get_owner_moves(self, owner):
+        moves = []
+
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                cell = Cell(row, col)
+                moves += self.get_piece_moves(cell, owner)
+                if (self.can_build_tower(cell, owner) or
+                        self.can_promote_knight(cell, owner)):
+                    moves.append(Move(cell))
+
+        return moves
+
 
 class Game:
     def __init__(self, ruleset, color=COLOR):
@@ -729,6 +781,9 @@ def main():
             error = game.undo()
         elif move_input == 'forfeit':
             winner = game.forfeit()
+        elif move_input == 'ai':
+            winner = game.move(random.choice(
+                game.board.get_owner_moves(game.turn)))
         else:
             try:
                 move = game.board.parse_move(move_input)
