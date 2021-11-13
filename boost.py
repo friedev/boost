@@ -19,6 +19,7 @@ import math
 import os
 import random
 import sys
+import queue
 
 from rulesets import rulesets, DEFAULT_RULESET
 
@@ -44,35 +45,6 @@ def distance(row1, col1, row2, col2):
 
 def cell_distance(cell1, cell2):
     return distance(cell1.row, cell1.col, cell2.row, cell2.col)
-
-
-# A generic list-based priority queue implementation
-class PriorityQueue:
-    def __init__(self):
-        self.queue = []
-
-    def __str__(self):
-        return ' '.join([str(i) for i in self.queue])
-
-    @property
-    def is_empty(self):
-        return len(self.queue) == 0
-
-    def insert(self, data):
-        self.queue.append(data)
-
-    def delete(self):
-        if self.is_empty:
-            raise IndexError
-
-        best = 0
-        for i in range(len(self.queue)):
-            if self.queue[i] < self.queue[best]:
-                best = i
-
-        item = self.queue[best]
-        del self.queue[best]
-        return item
 
 
 class Cell:
@@ -169,20 +141,34 @@ class Move:
         return cell_distance(self.start, self.end)
 
 
-class PathVertex:
-    def __init__(self, cell, path, heuristic):
-        self.cell = cell
+class Path:
+    def __init__(self, path, heuristic=0):
         self.path = path
         self.heuristic = heuristic
 
+    @property
+    def start(self):
+        return self.path[0] if self.path else None
+
+    @property
+    def end(self):
+        return self.path[-1] if self.path else None
+
+    @property
+    def total_heuristic(self):
+        return len(self.path) + self.heuristic
+
     def __lt__(self, other):
-        return self.heuristic < other.heuristic
+        return self.total_heuristic < other.total_heuristic
 
     def __gt__(self, other):
-        return other.__lt__(self)
+        return self.total_heuristic > other.total_heuristic
 
     def __eq__(self, other):
-        return self.heuristic == other.heuristic
+        return self.total_heuristic == other.total_heuristic
+
+    def __len__(self):
+        return len(self.path) - 1
 
 
 class Board:
@@ -413,28 +399,26 @@ class Board:
 
     def find_path(self, source, destination, distance=None):
         # A* with Manhattan distance heuristic (cell_distance)
-        worklist = PriorityQueue()
-        worklist.insert(PathVertex(source, [],
-                                   cell_distance(source, destination)))
+        worklist = queue.PriorityQueue()
+        worklist.put(Path([source], cell_distance(source, destination)))
 
-        while not worklist.is_empty:
-            workitem = worklist.delete()
+        while not worklist.empty():
+            path = worklist.get()
 
-            if distance is not None and len(workitem.path) > distance:
+            if distance is not None and len(path) > distance:
                 return None
 
-            if (workitem.cell == destination and
-                    (distance is None or len(workitem.path) == distance)):
-                return workitem.path
+            if (path.end == destination and
+                    (distance is None or len(path) == distance)):
+                return path
 
-            for neighbor in workitem.cell.neighbors:
+            for neighbor in path.end.neighbors:
                 piece = self.get_piece(neighbor)
                 if ((not piece or neighbor == destination) and
-                        neighbor not in workitem.path):
-                    worklist.insert(PathVertex(neighbor,
-                                    workitem.path + [neighbor],
-                                    len(workitem.path) + 1 +
-                                        cell_distance(neighbor, destination)))
+                        neighbor not in path.path):
+                    worklist.put(Path(path.path + [neighbor],
+                                      len(path) + 1 +
+                                      cell_distance(neighbor, destination)))
         return None
 
     def path_exists(self, move):
