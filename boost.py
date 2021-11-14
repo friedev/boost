@@ -39,12 +39,14 @@ DRAGON_OWNER = 0
 OWNER_COLORS = ['green', 'red', 'blue', 'yellow', 'magenta', 'cyan', 'white']
 
 # Static evaluation scores
-PAWN_SCORE = 10
-KNIGHT_SCORE = 15
-TOWER_SCORE = 40
-CONSTRUCTION_CIRCLE_SCORE = 5
+PAWN_SCORE = 20
+KNIGHT_SCORE = 30
+TOWER_SCORE = 80
+CONSTRUCTION_CIRCLE_SCORE = 10
 DRAGON_CIRCLE_SCORE = 20
-DRAGON_CLAIM_SCORE = 1
+DRAGON_CLAIM_SCORE = 5
+ACTIVE_PIECE_SCORE = 1
+MOBILE_KNIGHT_SCORE = 2
 
 
 def distance(row1, col1, row2, col2):
@@ -777,6 +779,12 @@ class Board:
                                 return INFINITY
                             max_dragon_circle = max(dragon_circle,
                                                     max_dragon_circle)
+                        else:
+                            if self.inside_border(cell):
+                                score += ACTIVE_PIECE_SCORE
+                            if (piece.piece_type is PieceTypes.KNIGHT and
+                                    self.get_boost(cell) > 1):
+                                score += MOBILE_KNIGHT_SCORE
 
                     elif piece.piece_type is PieceTypes.DRAGON:
                         for neighbor in cell.neighbors:
@@ -886,7 +894,7 @@ class Game:
     def get_best_move(self):
         # Choose a completely random move at AI depth 0
         if self.ai_depth == 0:
-            return random.choice([self.board.get_owner_moves(self.turn)])
+            return random.choice(list(self.board.get_owner_moves(self.turn)))
 
         self.recursions = 0
         start_time = time.time()
@@ -897,12 +905,6 @@ class Game:
 
         if VERBOSE:
             end_time = time.time()
-            print('Chosen Move:', move)
-            print('Current Score:',
-                  self.board.move(move, self.turn, apply=False)
-                      .evaluate(self.turn))
-            print('Potential Score:', score)
-            print('Recursions:', self.recursions)
             print('Time Elapsed:', end_time - start_time)
 
         return move
@@ -915,20 +917,22 @@ class Game:
             return None, board.evaluate(owner)
 
         best_move = None
+        best_next_move = None
         best_immediate = -INFINITY
         move_number = 1
         all_moves = board.get_owner_moves(turn)
         for move in all_moves:
+            if entry and VERBOSE:
+                print('Considering move',
+                      f'{move_number:2d}/{len(all_moves):2d}:  {move} ',
+                      end='')
+                prev_best = best_move
+                sys.stdout.flush()
+                move_number += 1
+
             # If a move exists, the player must make a move
             if best_move is None:
                 best_move = move
-
-            if entry and VERBOSE:
-                print('Considering move',
-                      f'{move_number:2d}/{len(all_moves):2d}: {move} ',
-                      end='')
-                sys.stdout.flush()
-                move_number += 1
 
             new_board = board.move(move, turn, apply=False)
             immediate_score = new_board.evaluate(owner)
@@ -941,31 +945,36 @@ class Game:
             next_turn = self.get_next_turn(turn)
             if self.players == 2:
                 # Use minimax in a 2-player game
-                _, score = self.mini(new_board, owner, next_turn,
-                                     alpha, beta, depth - 1)
+                next_move, score = self.mini(new_board, owner, next_turn,
+                                             alpha, beta, depth - 1)
             else:
                 # Use max^n in a non-2-player game
-                _, score = self.maxi(new_board, owner, next_turn,
-                                     alpha, beta, depth - 1)
+                next_move, score = self.maxi(new_board, owner, next_turn,
+                                             alpha, beta, depth - 1)
 
             if not entry and score >= beta:
-                # Fail-hard beta cutoff
-                return best_move, beta
+                # Fail-soft beta cutoff
+                return move, score
 
-            if score > alpha:
+            if (score > alpha or
+                    (score == alpha and immediate_score > best_immediate)):
                 best_move = move
+                best_next_move = next_move
                 alpha = score
                 best_immediate = immediate_score
-            elif score == alpha:
-                if immediate_score > best_immediate:
-                    best_move = move
-                    alpha = score
-                    best_immediate = immediate_score
 
             if entry and VERBOSE:
                 print(f'(score: {score}, immediate: {immediate_score})')
-                print(f'Current best move:      {best_move}',
+                new = ' (NEW):' if prev_best != best_move else ':      '
+                print(f'Current best move{new} {best_move}',
                       f'(alpha: {alpha}, immediate: {best_immediate})')
+
+        if entry and VERBOSE:
+            print('Chosen Move:', best_move)
+            print('Next Move:', best_next_move)
+            print('Current Score:', best_immediate)
+            print('Potential Score:', alpha)
+            print('Recursions:', self.recursions)
 
         return best_move, alpha
 
@@ -976,6 +985,7 @@ class Game:
             return None, -board.evaluate(owner)
 
         best_move = None
+        best_next_move = None
         best_immediate = INFINITY
         for move in board.get_owner_moves(turn):
             # If a move exists, the player must make a move
@@ -985,25 +995,22 @@ class Game:
             new_board = board.move(move, turn, apply=False)
             immediate_score = -new_board.evaluate(owner)
 
-            next_turn = self.get_next_turn()
-            _, score = self.mini(new_board, owner, next_turn,
-                                 alpha, beta, depth - 1)
+            next_turn = self.get_next_turn(turn)
+            next_move, score = self.maxi(new_board, owner, next_turn,
+                                         alpha, beta, depth - 1)
 
             if score <= alpha:
-                # Fail-hard alpha cutoff
-                return best_move, alpha
+                # Fail-soft alpha cutoff
+                return next_move, score
 
-            if score < beta:
+            if (score < beta or
+                    (score == beta and immediate_score < best_immediate)):
                 best_move = move
+                best_next_move = next_move
                 beta = score
                 best_immediate = immediate_score
-            elif score == beta:
-                if immediate_score < best_immediate:
-                    best_move = move
-                    beta = score
-                    best_immediate = immediate_score
 
-        return best_move, beta
+        return best_next_move, beta
 
 
 def main(game):
