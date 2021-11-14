@@ -998,7 +998,8 @@ class Game:
 
         if entry and VERBOSE:
             print('Chosen Move:', best_move)
-            print('Next Move:', best_next_move)
+            if self.players == 2:
+                print('Next Move:', best_next_move)
             print('Current Score:', best_immediate)
             print('Potential Score:', alpha)
             print('Recursions:', self.recursions)
@@ -1042,7 +1043,7 @@ class Game:
 
 def main(args):
     game = Game(rulesets[args.ruleset], args.color, args.depth)
-    error = ''
+    message = ''
     winner = None
     auto = args.auto
     while True:
@@ -1052,19 +1053,21 @@ def main(args):
             print()
 
         print(game.board.pretty)
+        print()
 
         if winner:
             print(f'Player {winner} won the game!')
             input('Press enter to exit.')
             sys.exit(0)
 
-        print(error)
-        error = ''
+        print(message)
+        message = ''
 
         if auto:
-            print('Running AI automatically...')
+            print(f'Running AI for Player {game.turn}...')
             best_move = game.get_best_move()
             if best_move is not None:
+                message = f'Player {game.turn} (AI) chose {best_move}.'
                 winner = game.move(best_move)
             else:
                 game.next_turn()
@@ -1078,7 +1081,7 @@ def main(args):
                 sys.exit(0)
 
             if move_input == 'help':
-                error = '\n'\
+                message =\
                   'a1b2: move a piece from A1 to B2 (for example)\n'\
                   'd2: build a tower or promote a pawn at D2 (for example)\n'\
                   'undo: undo the last move\n'\
@@ -1087,11 +1090,12 @@ def main(args):
                   'forfeit: forfeit the current game without exiting\n'\
                   'exit: exit the current game\n'
             elif move_input == 'undo':
-                error = game.undo()
+                message = game.undo()
             elif move_input == 'ai':
-                print('AI is thinking...')
+                print(f'Running AI for Player {game.turn}...')
                 best_move = game.get_best_move()
                 if best_move is not None:
+                    message = f'Player {game.turn} (AI) chose {best_move}.'
                     winner = game.move(best_move)
                 else:
                     game.next_turn()
@@ -1105,12 +1109,13 @@ def main(args):
                 try:
                     move = game.board.parse_move(move_input)
                 except (ValueError, IndexError):
-                    error = '\n'\
+                    message =\
                         'Moves should be given in chess notation.\n'\
                         'e.g. "a1b2" to move from A1 to B2.\n'
                 else:
-                    error = game.get_move_error(move)
-                    if not error:
+                    message = game.get_move_error(move)
+                    if not message:
+                        message = f'Player {game.turn} chose {move}.'
                         winner = game.move(move)
 
 
