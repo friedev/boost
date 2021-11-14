@@ -865,13 +865,14 @@ class Game:
                                 -INFINITY, INFINITY, self.ai_depth)
 
         if VERBOSE:
+            end_time = time.time()
             print('Chosen Move:', move)
             print('Current Score:',
                   self.board.move(move, self.turn, apply=False)
                       .evaluate(self.turn))
-            print('Time Elapsed:', time.time() - start_time)
             print('Potential Score:', score)
             print('Recursions:', self.recursions)
+            print('Time Elapsed:', end_time - start_time)
 
         return move
 
@@ -891,8 +892,15 @@ class Game:
                 move_number += 1
 
             new_board = board.move(move, turn, apply=False)
-            _, score = self.mini(new_board, owner, self.get_next_turn(turn),
-                                 alpha, beta, depth - 1)
+            next_turn = self.get_next_turn(turn)
+            if self.players == 2:
+                # Use minimax in a 2-player game
+                _, score = self.mini(new_board, owner, next_turn,
+                                     alpha, beta, depth - 1)
+            else:
+                # Use max^n in a non-2-player game
+                _, score = self.maxi(new_board, owner, next_turn,
+                                     alpha, beta, depth - 1)
 
             if score >= beta:
                 # Beta cutoff
@@ -913,7 +921,8 @@ class Game:
         best_move = None
         for move in board.get_owner_moves(turn):
             new_board = board.move(move, turn, apply=False)
-            _, score = self.maxi(new_board, owner, self.get_next_turn(turn),
+            next_turn = self.get_next_turn()
+            _, score = self.mini(new_board, owner, next_turn,
                                  alpha, beta, depth - 1)
 
             if score <= alpha:
