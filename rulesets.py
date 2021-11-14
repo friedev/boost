@@ -121,6 +121,15 @@ P1 T1 P3
 P2 T2 .
 .  D0 T3
 ''',
+
+    # P2 cannot move
+    'debug_no_move': '''
+P1 .
+.  .
+T1 T1
+T1 T1
+P2 T1
+''',
 }
 
 
@@ -290,6 +299,16 @@ rulesets = {
                                   knights_per_tower=1,
                                   min_pieces=4,
                                   tower_victory=True),
+
+    'debug_no_move': Ruleset(boards['debug_no_move'],
+                             width=2,
+                             height=5,
+                             players=2,
+                             dragons=0,
+                             max_towers=5,
+                             knights_per_tower=1,
+                             min_pieces=4,
+                             tower_victory=True),
 }
 
 

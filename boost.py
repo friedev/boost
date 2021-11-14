@@ -73,6 +73,9 @@ class Cell:
             return self.row == other.row and self.col == other.col
         return False
 
+    def __hash__(self):
+        return hash((self.row, self.col))
+
     @property
     def neighbors(self):
         return [Cell(self.row - 1, self.col),
@@ -159,6 +162,9 @@ class Move:
             return self.start == other.start and self.end == other.end
         return False
 
+    def __hash__(self):
+        return hash((self.start, self.end))
+
     @property
     def distance(self):
         return cell_distance(self.start, self.end)
@@ -207,6 +213,8 @@ class Board:
                     if board[row][col] is not None:
                         self.board[row][col] = board[row][col]
                         self.owners = max(self.owners, board[row][col].owner)
+            # Account for the dragon owner
+            self.owners += 1
         else:
             self.load(ruleset.board_string)
             self.place_dragons(ruleset.dragons)
@@ -370,6 +378,8 @@ class Board:
             if col > 0:
                 row += 1
                 col = 0
+
+        # Account for the dragon owner
         self.owners += 1
 
     def place_dragons(self, dragons):
@@ -628,6 +638,15 @@ class Board:
                     return tower.owner
         return None
 
+    @property
+    def winner(self):
+        capture_winner = self.capture_winner
+        if capture_winner is not None:
+            return capture_winner
+        if self.ruleset.tower_victory:
+            return self.tower_winner
+        return None
+
     def move(self, move, owner, apply=True):
         if not apply:
             new_board = self.copy()
@@ -682,18 +701,18 @@ class Board:
     def get_piece_moves(self, cell, owner=None):
         piece = self.get_piece(cell)
         if piece is None or piece.piece_type is PieceTypes.TOWER:
-            return []
+            return set()
 
         if owner is None:
             owner = piece.owner
         elif (owner != piece.owner and
                 not (piece.owner == DRAGON_OWNER and
                      self.can_move_dragon(cell, owner))):
-            return []
+            return set()
 
         # Breadth-first search to find all possible moves
         boost = self.get_boost(cell)
-        moves = []
+        moves = set()
         worklist = queue.Queue()
         worklist.put(Path([cell]))
 
@@ -703,7 +722,7 @@ class Board:
             if len(path) == boost:
                 move = Move(path.start, path.end)
                 if self.is_valid(move, owner, skip_pathfinding=True):
-                    moves.append(move)
+                    moves.add(move)
 
             if len(path) > boost:
                 return moves
@@ -718,15 +737,15 @@ class Board:
         return moves
 
     def get_owner_moves(self, owner):
-        moves = []
+        moves = set()
 
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 cell = Cell(row, col)
-                moves += self.get_piece_moves(cell, owner)
+                moves |= self.get_piece_moves(cell, owner)
                 if (self.can_build_tower(cell, owner) or
                         self.can_promote_knight(cell, owner)):
-                    moves.append(Move(cell))
+                    moves.add(Move(cell))
 
         return moves
 
@@ -735,6 +754,7 @@ class Board:
         tower_count = 0
         max_dragon_circle = 0
         max_construction_circle = 0
+        owner_pieces = [0] * self.owners
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 cell = Cell(row, col)
@@ -753,6 +773,8 @@ class Board:
                                         neighbor_piece.piece_type ==
                                         PieceTypes.DRAGON):
                                     dragon_circle += 1
+                            if dragon_circle == 4:
+                                return INFINITY
                             max_dragon_circle = max(dragon_circle,
                                                     max_dragon_circle)
 
@@ -774,6 +796,7 @@ class Board:
 
                     else:
                         score -= piece.piece_type.value.score
+                        owner_pieces[piece.owner] += 1
 
                 elif self.inside_border(cell):
                     # Don't count the first piece, since that's a given
@@ -787,10 +810,18 @@ class Board:
                                 construction_circle -= 1
                     max_construction_circle = max(construction_circle,
                                                   max_construction_circle)
-        score += max_dragon_circle * DRAGON_CIRCLE_SCORE
-        if tower_count < self.ruleset.max_towers:
-            score += max_construction_circle * CONSTRUCTION_CIRCLE_SCORE
-        return score
+
+        # Check for capture victory
+        for other in range(1, self.owners):
+            if (other != owner and
+                    owner_pieces[other] >= self.ruleset.min_pieces):
+                # No capture victory, return normal evaluation
+                score += max_dragon_circle * DRAGON_CIRCLE_SCORE
+                if tower_count < self.ruleset.max_towers:
+                    score += max_construction_circle *\
+                             CONSTRUCTION_CIRCLE_SCORE
+                return score
+        return INFINITY
 
 
 class Game:
@@ -855,7 +886,7 @@ class Game:
     def get_best_move(self):
         # Choose a completely random move at AI depth 0
         if self.ai_depth == 0:
-            return random.choice(self.board.get_owner_moves(self.turn))
+            return random.choice([self.board.get_owner_moves(self.turn)])
 
         self.recursions = 0
         start_time = time.time()
@@ -877,21 +908,36 @@ class Game:
         return move
 
     def maxi(self, board, owner, turn, alpha, beta, depth):
-        logging = self.recursions == 0
+        entry = self.recursions == 0
         self.recursions += 1
 
         if depth == 0:
             return None, board.evaluate(owner)
 
         best_move = None
+        best_immediate = -INFINITY
         move_number = 1
         all_moves = board.get_owner_moves(turn)
         for move in all_moves:
-            if logging and VERBOSE:
-                print(f'Considering move: {move_number}/{len(all_moves)}')
+            # If a move exists, the player must make a move
+            if best_move is None:
+                best_move = move
+
+            if entry and VERBOSE:
+                print('Considering move',
+                      f'{move_number:2d}/{len(all_moves):2d}: {move} ',
+                      end='')
+                sys.stdout.flush()
                 move_number += 1
 
             new_board = board.move(move, turn, apply=False)
+            immediate_score = new_board.evaluate(owner)
+
+            if entry:
+                # Exit early if we can win with this move right now
+                if immediate_score == INFINITY:
+                    return move, immediate_score
+
             next_turn = self.get_next_turn(turn)
             if self.players == 2:
                 # Use minimax in a 2-player game
@@ -902,13 +948,24 @@ class Game:
                 _, score = self.maxi(new_board, owner, next_turn,
                                      alpha, beta, depth - 1)
 
-            if score >= beta:
-                # Beta cutoff
+            if not entry and score >= beta:
+                # Fail-hard beta cutoff
                 return best_move, beta
 
             if score > alpha:
                 best_move = move
                 alpha = score
+                best_immediate = immediate_score
+            elif score == alpha:
+                if immediate_score > best_immediate:
+                    best_move = move
+                    alpha = score
+                    best_immediate = immediate_score
+
+            if entry and VERBOSE:
+                print(f'(score: {score}, immediate: {immediate_score})')
+                print(f'Current best move:      {best_move}',
+                      f'(alpha: {alpha}, immediate: {best_immediate})')
 
         return best_move, alpha
 
@@ -919,19 +976,32 @@ class Game:
             return None, -board.evaluate(owner)
 
         best_move = None
+        best_immediate = INFINITY
         for move in board.get_owner_moves(turn):
+            # If a move exists, the player must make a move
+            if best_move is None:
+                best_move = move
+
             new_board = board.move(move, turn, apply=False)
+            immediate_score = -new_board.evaluate(owner)
+
             next_turn = self.get_next_turn()
             _, score = self.mini(new_board, owner, next_turn,
                                  alpha, beta, depth - 1)
 
             if score <= alpha:
-                # Alpha cutoff
+                # Fail-hard alpha cutoff
                 return best_move, alpha
 
             if score < beta:
                 best_move = move
                 beta = score
+                best_immediate = immediate_score
+            elif score == beta:
+                if immediate_score < best_immediate:
+                    best_move = move
+                    beta = score
+                    best_immediate = immediate_score
 
         return best_move, beta
 
@@ -969,7 +1039,11 @@ def main(game):
             error = game.undo()
         elif move_input == 'ai':
             print('AI is thinking...')
-            winner = game.move(game.get_best_move())
+            best_move = game.get_best_move()
+            if best_move is not None:
+                winner = game.move(best_move)
+            else:
+                game.next_turn()
         elif move_input == 'forfeit':
             winner = game.forfeit()
         elif move_input == 'exit':
