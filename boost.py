@@ -957,21 +957,30 @@ def main(game):
             # Don't print a traceback on user-generated exit signals
             print()
             sys.exit(0)
-        if move_input == 'exit':
-            sys.exit(0)
+        if move_input == 'help':
+            error = '\n'\
+                'a1b2: move a piece from A1 to B2 (for example)\n'\
+                'd2: build a tower or promote a pawn at D2 (for example)\n'\
+                'undo: undo the last move\n'\
+                'ai: let an AI move for the current player\n'\
+                'forfeit: forfeit the current game without exiting\n'\
+                'exit: exit the current game\n'
         elif move_input == 'undo':
             error = game.undo()
-        elif move_input == 'forfeit':
-            winner = game.forfeit()
         elif move_input == 'ai':
             print('AI is thinking...')
             winner = game.move(game.get_best_move())
+        elif move_input == 'forfeit':
+            winner = game.forfeit()
+        elif move_input == 'exit':
+            sys.exit(0)
         else:
             try:
                 move = game.board.parse_move(move_input)
             except (ValueError, IndexError):
-                error = 'Bad move format. Moves should be given in chess '\
-                        'notation.\ne.g. "a1b2" to move from A1 to B2.'
+                error = '\n'\
+                    'Moves should be given in chess notation.\n'\
+                    'e.g. "a1b2" to move from A1 to B2.\n'
             else:
                 error = game.get_move_error(move)
                 if not error:

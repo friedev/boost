@@ -17,7 +17,15 @@ For graphics, `librsvg` (on Arch-based systems) or `librsvg2-bin` (on Debian-bas
 
 ## Usage
 
+### Terminal
+
 To play boost-py from the command line, `cd` into the repo and run `python3 boost.py`.
+
+To see a list of game commands, enter `help` in-game.
+
+For more usage information, run `python3 boost.py --help`.
+
+### Discord Bot
 
 To run boost-py as a Discord bot, you have two options:
 

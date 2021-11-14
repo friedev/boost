@@ -10,9 +10,6 @@
 - Full rules compliance
 	- Skip player's turn if they have no possible moves
 	- Prevent moves that would lead to a previous board state
-- AI
-	- Static evaluation score based on piece counts
-	- Iterate over all possible moves and choose the one with maximum score
 - Maintainability
 	- Debug powers (ignore movement rules)
 	- Unit tests (unittest package or just a test() method)
@@ -20,12 +17,8 @@
 - Documentation
 	- Better error messages
 	- Docstrings for all functions/classes
-- Performance
-	- Cache piece counts
-	- Cache defeated players
-	- Cache winner?
 - New piece types
-	- Give each piece properties rather than hardcoding based on type
+	- Give each piece properties rather than hard-coding based on type
 	- Walls (for variants)
 	- New playable pieces (for variants)
 - Arbitrary game sizes
@@ -34,4 +27,3 @@
 	- >26 files
 	- Symmetric placement of dragons for >2 players
 - Refactor to support any arbitrary rulesets (e.g. chess)
-- Better icon?
