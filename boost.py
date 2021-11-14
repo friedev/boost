@@ -1040,59 +1040,78 @@ class Game:
         return best_next_move, beta
 
 
-def main(game):
+def main(args):
+    game = Game(rulesets[args.ruleset], args.color, args.depth)
     error = ''
     winner = None
+    auto = args.auto
     while True:
         if args.clear:
             os.system('clear')
         else:
             print()
+
         print(game.board.pretty)
+
         if winner:
             print(f'Player {winner} won the game!')
             input('Press enter to exit.')
             sys.exit(0)
+
         print(error)
         error = ''
-        try:
-            move_input = input(f"Player {game.turn}'s Move: ")
-        except (KeyboardInterrupt, EOFError):
-            # Don't print a traceback on user-generated exit signals
-            print()
-            sys.exit(0)
-        if move_input == 'help':
-            error = '\n'\
-                'a1b2: move a piece from A1 to B2 (for example)\n'\
-                'd2: build a tower or promote a pawn at D2 (for example)\n'\
-                'undo: undo the last move\n'\
-                'ai: let an AI move for the current player\n'\
-                'forfeit: forfeit the current game without exiting\n'\
-                'exit: exit the current game\n'
-        elif move_input == 'undo':
-            error = game.undo()
-        elif move_input == 'ai':
-            print('AI is thinking...')
+
+        if auto:
+            print('Running AI automatically...')
             best_move = game.get_best_move()
             if best_move is not None:
                 winner = game.move(best_move)
             else:
                 game.next_turn()
-        elif move_input == 'forfeit':
-            winner = game.forfeit()
-        elif move_input == 'exit':
-            sys.exit(0)
+
         else:
             try:
-                move = game.board.parse_move(move_input)
-            except (ValueError, IndexError):
+                move_input = input(f"Player {game.turn}'s Move: ")
+            except (KeyboardInterrupt, EOFError):
+                # Don't print a traceback on user-generated exit signals
+                print()
+                sys.exit(0)
+
+            if move_input == 'help':
                 error = '\n'\
-                    'Moves should be given in chess notation.\n'\
-                    'e.g. "a1b2" to move from A1 to B2.\n'
+                  'a1b2: move a piece from A1 to B2 (for example)\n'\
+                  'd2: build a tower or promote a pawn at D2 (for example)\n'\
+                  'undo: undo the last move\n'\
+                  'ai: let an AI move for the current player\n'\
+                  'auto: run the AI automatically for every move\n'\
+                  'forfeit: forfeit the current game without exiting\n'\
+                  'exit: exit the current game\n'
+            elif move_input == 'undo':
+                error = game.undo()
+            elif move_input == 'ai':
+                print('AI is thinking...')
+                best_move = game.get_best_move()
+                if best_move is not None:
+                    winner = game.move(best_move)
+                else:
+                    game.next_turn()
+            elif move_input == 'auto':
+                auto = True
+            elif move_input == 'forfeit':
+                winner = game.forfeit()
+            elif move_input == 'exit':
+                sys.exit(0)
             else:
-                error = game.get_move_error(move)
-                if not error:
-                    winner = game.move(move)
+                try:
+                    move = game.board.parse_move(move_input)
+                except (ValueError, IndexError):
+                    error = '\n'\
+                        'Moves should be given in chess notation.\n'\
+                        'e.g. "a1b2" to move from A1 to B2.\n'
+                else:
+                    error = game.get_move_error(move)
+                    if not error:
+                        winner = game.move(move)
 
 
 if __name__ == '__main__':
@@ -1118,10 +1137,15 @@ if __name__ == '__main__':
                         action='store_true',
                         help='display logging information for debugging; '
                              'enables preserve')
-    parser.add_argument('-a', '--ai',
+    parser.add_argument('-a', '--auto',
+                        action='store_true',
+                        help='enable auto mode automatically')
+    parser.add_argument('-d', '--depth',
                         type=int,
                         default=4,
-                        help='AI strength, as measured by the minimax depth; '
+                        help='AI minimax depth: '
+                             'higher values equate to a stronger AI; '
+                             'standard values range from 2-4; '
                              'use 0 for completely random AI moves')
     parser.set_defaults(color=COLOR)
     parser.set_defaults(clear=True)
@@ -1137,9 +1161,8 @@ if __name__ == '__main__':
         print('Install termcolor via pip for color support', file=sys.stderr)
         sys.exit(1)
 
-    if args.ai < 0:
-        print(f'AI minimax depth must be non-negative (was {args.ai})')
+    if args.depth < 0:
+        print(f'AI minimax depth must be non-negative (was {args.depth})')
         sys.exit(1)
 
-    game = Game(rulesets[args.ruleset], args.color, args.ai)
-    main(game)
+    main(args)
