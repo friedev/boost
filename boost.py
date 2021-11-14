@@ -254,6 +254,9 @@ class Board:
         # Slice off trailing newline
         return string[:-1]
 
+    def __hash__(self):
+        return hash(str(self))
+
     @property
     def cell_width(self):
         return 2 if self.color or self.owners <= 3 else 3
@@ -860,13 +863,21 @@ class Board:
 
 
 class Game:
-    def __init__(self, ruleset, color=COLOR, ai_depth=4):
+    def __init__(self, ruleset, color=COLOR, depth=4, cache=True):
         self.ruleset = ruleset
         self.board = Board(ruleset, color)
         self.players = ruleset.players
-        self.ai_depth = ai_depth
+        self.depth = depth
         self.turn = 1
         self.history = [str(self.board)]
+        if cache:
+            self.maxi_cache = {}
+            self.mini_cache = {}
+        else:
+            self.maxi_cache = None
+            self.mini_cache = None
+        self.recursions = 0
+        self.cache_hits = 0
 
     def get_next_turn(self, turn=None):
         if turn is None:
@@ -920,15 +931,16 @@ class Game:
 
     def get_best_move(self):
         # Choose a completely random move at AI depth 0
-        if self.ai_depth == 0:
+        if self.depth == 0:
             return random.choice(self.board.get_owner_moves(self.turn))
 
-        self.recursions = 0
         start_time = time.time()
+        self.recursions = 0
+        self.cache_hits = 0
 
         # Minimax with alpha-beta pruning
         move, score = self.maxi(self.board, self.turn, self.turn,
-                                -INFINITY, INFINITY, self.ai_depth)
+                                -INFINITY, INFINITY, self.depth)
 
         if VERBOSE:
             end_time = time.time()
@@ -942,6 +954,14 @@ class Game:
 
         if depth == 0:
             return None, board.evaluate(owner)
+
+        if self.maxi_cache is not None:
+            cached = self.maxi_cache.get(hash((board, owner, turn)))
+            if cached:
+                if entry and VERBOSE:
+                    print('Returning cached value')
+                self.cache_hits += 1
+                return cached
 
         best_move = None
         best_next_move = None
@@ -992,6 +1012,10 @@ class Game:
 
             if entry and VERBOSE:
                 print(f'(score: {score}, immediate: {immediate_score})')
+                if self.cache_hits > 0:
+                    print(self.cache_hits, 'cache hit' +
+                          ('s' if self.cache_hits != 1 else ''))
+                    self.cache_hits = 0
                 new = ' (NEW):' if prev_best != best_move else ':      '
                 print(f'Current best move{new} {best_move}',
                       f'(alpha: {alpha}, immediate: {best_immediate})')
@@ -1004,6 +1028,8 @@ class Game:
             print('Potential Score:', alpha)
             print('Recursions:', self.recursions)
 
+        if self.maxi_cache is not None:
+            self.maxi_cache[hash((board, owner, turn))] = best_move, alpha
         return best_move, alpha
 
     def mini(self, board, owner, turn, alpha, beta, depth):
@@ -1011,6 +1037,12 @@ class Game:
 
         if depth == 0:
             return None, -board.evaluate(owner)
+
+        if self.mini_cache is not None:
+            cached = self.mini_cache.get(hash((board, owner, turn)))
+            if cached:
+                self.cache_hits += 1
+                return cached
 
         best_move = None
         best_next_move = None
@@ -1038,11 +1070,13 @@ class Game:
                 beta = score
                 best_immediate = immediate_score
 
+        if self.mini_cache is not None:
+            self.mini_cache[hash((board, owner, turn))] = best_next_move, beta
         return best_next_move, beta
 
 
 def main(args):
-    game = Game(rulesets[args.ruleset], args.color, args.depth)
+    game = Game(rulesets[args.ruleset], args.color, args.depth, args.cache)
     message = ''
     winner = None
     auto = args.auto
@@ -1152,8 +1186,13 @@ if __name__ == '__main__':
                              'higher values equate to a stronger AI; '
                              'standard values range from 2-4; '
                              'use 0 for completely random AI moves')
+    parser.add_argument('-G' '--no-cache',
+                        action='store_false',
+                        help='disable caching the best AI move for previously '
+                             'considered board states')
     parser.set_defaults(color=COLOR)
     parser.set_defaults(clear=True)
+    parser.set_defaults(cache=True)
     args = parser.parse_args()
 
     global VERBOSE
