@@ -144,6 +144,7 @@ class Ruleset:
         assert max_towers >= 0
         assert knights_per_tower >= 0
         assert min_pieces > 0
+        assert not (players == 1 and not tower_victory)
         self.board_string = board_string
         self.width = width
         self.height = height
