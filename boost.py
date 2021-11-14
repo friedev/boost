@@ -794,10 +794,11 @@ class Board:
 
 
 class Game:
-    def __init__(self, ruleset, color=COLOR):
+    def __init__(self, ruleset, color=COLOR, ai_depth=4):
         self.ruleset = ruleset
         self.board = Board(ruleset, color)
         self.players = ruleset.players
+        self.ai_depth = ai_depth
         self.turn = 1
         self.history = [str(self.board)]
 
@@ -851,13 +852,17 @@ class Game:
         self.next_turn()
         return self.board.capture_winner
 
-    def get_best_move(self, depth=2):
+    def get_best_move(self):
+        # Choose a completely random move at AI depth 0
+        if self.ai_depth == 0:
+            return random.choice(self.board.get_owner_moves(self.turn))
+
         self.recursions = 0
         start_time = time.time()
 
         # Minimax with alpha-beta pruning
         move, score = self.maxi(self.board, self.turn, self.turn,
-                                -INFINITY, INFINITY, depth)
+                                -INFINITY, INFINITY, self.ai_depth)
 
         if VERBOSE:
             print('Chosen Move:', move)
@@ -951,7 +956,7 @@ def main(game):
             winner = game.forfeit()
         elif move_input == 'ai':
             print('AI is thinking...')
-            winner = game.move(game.get_best_move(depth=4))
+            winner = game.move(game.get_best_move())
         else:
             try:
                 move = game.board.parse_move(move_input)
@@ -987,6 +992,11 @@ if __name__ == '__main__':
                         action='store_true',
                         help='display logging information for debugging; '
                              'enables preserve')
+    parser.add_argument('-a', '--ai',
+                        type=int,
+                        default=4,
+                        help='AI strength, as measured by the minimax depth; '
+                             'use 0 for completely random AI moves')
     parser.set_defaults(color=COLOR)
     parser.set_defaults(clear=True)
     args = parser.parse_args()
@@ -1001,5 +1011,9 @@ if __name__ == '__main__':
         print('Install termcolor via pip for color support', file=sys.stderr)
         sys.exit(1)
 
-    game = Game(rulesets[args.ruleset], args.color)
+    if args.ai < 0:
+        print(f'AI minimax depth must be non-negative (was {args.ai})')
+        sys.exit(1)
+
+    game = Game(rulesets[args.ruleset], args.color, args.ai)
     main(game)
