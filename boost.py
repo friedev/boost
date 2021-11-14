@@ -19,6 +19,7 @@ import math
 import os
 import random
 import sys
+import time
 import queue
 
 from rulesets import rulesets, DEFAULT_RULESET
@@ -37,6 +38,14 @@ EMPTY_CELL_LONG = '. '
 DRAGON_OWNER = 0
 OWNER_COLORS = ['green', 'red', 'blue', 'yellow', 'magenta', 'cyan', 'white']
 
+# Static evaluation scores
+PAWN_SCORE = 10
+KNIGHT_SCORE = 15
+TOWER_SCORE = 40
+CONSTRUCTION_CIRCLE_SCORE = 5
+DRAGON_CIRCLE_SCORE = 20
+DRAGON_CLAIM_SCORE = 1
+
 
 def distance(row1, col1, row2, col2):
     # Manhattan distance
@@ -52,6 +61,13 @@ class Cell:
         self.row = row
         self.col = col
 
+    def __str__(self):
+        # Assumes a 9-row board
+        return chr(self.col + ord('a')) + str(9 - self.row)
+
+    def __repr__(self):
+        return str(self)
+
     def __eq__(self, other):
         if isinstance(other, Cell):
             return self.row == other.row and self.col == other.col
@@ -66,16 +82,17 @@ class Cell:
 
 
 class PieceType:
-    def __init__(self, name, symbol):
+    def __init__(self, name, symbol, score=0):
         self.name = name
         self.symbol = symbol
+        self.score = score
 
 
 class PieceTypes(enum.Enum):
     DRAGON = PieceType('Dragon', 'D')
-    PAWN = PieceType('Pawn', 'P')
-    KNIGHT = PieceType('Knight', 'K')
-    TOWER = PieceType('Tower', 'T')
+    PAWN = PieceType('Pawn', 'P', PAWN_SCORE)
+    KNIGHT = PieceType('Knight', 'K', KNIGHT_SCORE)
+    TOWER = PieceType('Tower', 'T', TOWER_SCORE)
 
 
 class Piece:
@@ -83,7 +100,7 @@ class Piece:
         # assert isinstance(owner, int)
         # assert owner >= 0
         # assert piece_type in PieceTypes
-        # assert (owner == DRAGON_OWNER) == (piece_type == PieceTypes.DRAGON)
+        # assert (owner == DRAGON_OWNER) == (piece_type is PieceTypes.DRAGON)
         self.owner = owner
         self.piece_type = piece_type
 
@@ -93,7 +110,7 @@ class Piece:
     def __eq__(self, other):
         if isinstance(other, Piece):
             return (self.owner == other.owner and
-                    self.piece_type == other.piece_type)
+                    self.piece_type is other.piece_type)
         return False
 
     def __hash__(self):
@@ -116,7 +133,7 @@ class Piece:
         return (self.owner >= 0 and
                 self.piece_type in PieceTypes and
                 (self.owner == DRAGON_OWNER) ==
-                (self.piece_type == PieceTypes.DRAGON))
+                (self.piece_type is PieceTypes.DRAGON))
 
     @staticmethod
     def parse(string):
@@ -130,6 +147,12 @@ class Move:
     def __init__(self, start, end=None):
         self.start = start
         self.end = end if end is not None else start
+
+    def __str__(self):
+        return str(self.start) + str(self.end)
+
+    def __repr__(self):
+        return str(self)
 
     def __eq__(self, other):
         if isinstance(other, Move):
@@ -172,16 +195,23 @@ class Path:
 
 
 class Board:
-    def __init__(self, ruleset, color=COLOR, board=None, forfeited=set()):
+    def __init__(self, ruleset, color=COLOR, board=None):
         self.ruleset = ruleset
         self.color = color
         self.board = Board.empty(ruleset.width, ruleset.height)
         if board:
-            self.board = board
+            # Deep copy
+            self.owners = 0
+            for row in range(len(self.board)):
+                for col in range(len(self.board[row])):
+                    if board[row][col] is not None:
+                        self.board[row][col] = board[row][col]
+                        self.owners = max(self.owners, board[row][col].owner)
         else:
             self.load(ruleset.board_string)
             self.place_dragons(ruleset.dragons)
-        self.forfeited = forfeited
+        self.forfeited = set()
+        self.piece_counts_cache = None
 
     @property
     def width(self):
@@ -194,6 +224,11 @@ class Board:
     @staticmethod
     def empty(width, height):
         return [[None for col in range(width)] for row in range(height)]
+
+    def copy(self):
+        new_board = Board(self.ruleset, self.color, self.board)
+        new_board.forfeited = self.forfeited
+        return new_board
 
     def __str__(self):
         string = ''
@@ -262,26 +297,20 @@ class Board:
 
     @property
     def piece_counts(self):
-        pieces = {}
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                piece = self.get_piece(Cell(row, col))
-                if piece is not None:
-                    if piece in pieces:
-                        pieces[piece] += 1
-                    else:
-                        pieces[piece] = 1
-        return pieces
+        if self.piece_counts_cache is not None:
+            return self.piece_counts_cache
 
-    @property
-    def pieces(self):
-        pieces = []
+        piece_counts = {}
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 piece = self.get_piece(Cell(row, col))
                 if piece is not None:
-                    pieces.append(piece)
-        return pieces
+                    if piece in piece_counts:
+                        piece_counts[piece] += 1
+                    else:
+                        piece_counts[piece] = 1
+        self.piece_counts_cache = piece_counts
+        return piece_counts
 
     def get_owned_pieces(self, owners):
         if not isinstance(owners, list):
@@ -383,6 +412,20 @@ class Board:
                 cell.col >= 0 and
                 cell.col < len(self.board[cell.row]))
 
+    def on_border(self, cell):
+        assert cell
+        return (cell.row == 0 and
+                cell.row == len(self.board) - 1 and
+                cell.col == 0 and
+                cell.col == len(self.board[cell.row]) - 1)
+
+    def inside_border(self, cell):
+        assert cell
+        return (cell.row > 0 and
+                cell.row < len(self.board) - 1 and
+                cell.col > 0 and
+                cell.col < len(self.board[cell.row]) - 1)
+
     def get_piece(self, cell):
         if not self.in_bounds(cell):
             return None
@@ -416,7 +459,8 @@ class Board:
 
             for neighbor in path.end.neighbors:
                 if self.in_bounds(neighbor):
-                    piece = self.get_piece(neighbor)
+                    # Directly access piece to avoid a redundant bounds check
+                    piece = self.board[neighbor.row][neighbor.col]
                     if ((piece is None or neighbor == destination) and
                             neighbor not in path.path):
                         worklist.put(Path(path.path + [neighbor],
@@ -432,7 +476,7 @@ class Board:
 
     def can_move_dragon(self, cell, owner):
         assert owner != DRAGON_OWNER
-        assert self.get_piece(cell).piece_type == PieceTypes.DRAGON
+        assert self.get_piece(cell).piece_type is PieceTypes.DRAGON
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
             if neighbor_piece and neighbor_piece.owner == owner:
@@ -449,7 +493,7 @@ class Board:
                 return False
 
         owner_towers = self.piece_counts.get(Piece(owner, PieceTypes.TOWER), 0)
-        return owner_towers < self.max_towers
+        return owner_towers < self.ruleset.max_towers
 
     def can_promote_knight(self, cell, owner):
         piece = self.get_piece(cell)
@@ -464,19 +508,19 @@ class Board:
         if (knight in piece_counts and
                 tower in piece_counts and
                 piece_counts[knight] >= piece_counts[tower] *
-                self.knights_per_tower):
+                self.ruleset.knights_per_tower):
             return False
 
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
             if (neighbor_piece and
                     neighbor_piece.owner == owner and
-                    neighbor_piece.piece_type == PieceTypes.TOWER):
+                    neighbor_piece.piece_type is PieceTypes.TOWER):
                 return True
 
         return False
 
-    def get_move_error(self, move, owner):
+    def get_move_error(self, move, owner, skip_pathfinding=False):
         if move.start == move.end:
             if self.can_build_tower(move.start, owner):
                 return ''
@@ -491,7 +535,7 @@ class Board:
         if not piece:
             return f'There is no piece at {self.format_cell(move.start)} '\
                     'to move.'
-        elif (piece.piece_type == PieceTypes.DRAGON and
+        elif (piece.piece_type is PieceTypes.DRAGON and
                 not self.can_move_dragon(move.start, owner)):
             return f'To move the {piece.name} at '\
                    f'{self.format_cell(move.start)}, '\
@@ -499,9 +543,9 @@ class Board:
         elif piece.owner != owner and piece.owner != DRAGON_OWNER:
             return f'You are not the owner of the {piece.name} at '\
                    f'{self.format_cell(move.start)}.'
-        elif piece.piece_type == PieceTypes.TOWER:
+        elif piece.piece_type is PieceTypes.TOWER:
             return 'Towers cannot move.'
-        elif not self.path_exists(move):
+        elif not skip_pathfinding and not self.path_exists(move):
             return f'You must move this piece exactly {boost} cell(s).'
         elif not self.in_bounds(move.end):
             return f'{self.format_cell(move.end)} is out of bounds.'
@@ -509,20 +553,20 @@ class Board:
             return f'A {piece.name} cannot capture pieces directly.'
         elif destination and destination.owner == owner:
             return 'You cannot capture your own piece.'
-        elif destination and destination.piece_type == PieceTypes.DRAGON:
+        elif destination and destination.piece_type is PieceTypes.DRAGON:
             return 'Dragons cannot be captured.'
         return ''
 
-    def is_valid(self, move, owner):
-        return not self.get_move_error(move, owner)
+    def is_valid(self, move, owner, skip_pathfinding=False):
+        return not self.get_move_error(move, owner, skip_pathfinding)
 
     def capture(self, cell, owner):
         # Processes captures made by the piece moved to the given cell by the
         # given owner
         piece = self.get_piece(cell)
         assert piece
-        assert (piece.piece_type == PieceTypes.PAWN or
-                piece.piece_type == PieceTypes.DRAGON)
+        assert (piece.piece_type is PieceTypes.PAWN or
+                piece.piece_type is PieceTypes.DRAGON)
         captures = 0
         for neighbor in cell.neighbors:
             neighbor_piece = self.get_piece(neighbor)
@@ -573,7 +617,7 @@ class Board:
     def tower_winner(self):
         for cell in self.tower_cells:
             tower = self.get_piece(cell)
-            if tower and tower.piece_type == PieceTypes.TOWER:
+            if tower and tower.piece_type is PieceTypes.TOWER:
                 dragons = 0
                 for neighbor in cell.neighbors:
                     dragon = self.get_piece(neighbor)
@@ -584,7 +628,15 @@ class Board:
                     return tower.owner
         return None
 
-    def move(self, move, owner):
+    def move(self, move, owner, apply=True):
+        if not apply:
+            new_board = self.copy()
+            new_board.move(move, owner, apply=True)
+            return new_board
+
+        # Clear cached piece counts since the board may change
+        self.piece_counts_cache = None
+
         if move.start == move.end:
             piece = self.get_piece(move.start)
             if not piece:
@@ -604,11 +656,11 @@ class Board:
 
             captures = 0
             # Check for direct knight capture
-            if piece.piece_type == PieceTypes.KNIGHT and target:
+            if piece.piece_type is PieceTypes.KNIGHT and target:
                 captures = 1
             # Check for pawn or dragon capture
-            elif (piece.piece_type == PieceTypes.PAWN or
-                    piece.piece_type == PieceTypes.DRAGON):
+            elif (piece.piece_type is PieceTypes.PAWN or
+                    piece.piece_type is PieceTypes.DRAGON):
                 captures = self.capture(move.end, owner)
 
             # Check for capture victory if any pieces were captured
@@ -621,7 +673,7 @@ class Board:
             # Must be checked after captures in case a player captured a tower
             # by moving a fourth dragon next to it
             if (self.ruleset.tower_victory and
-                    piece.piece_type == PieceTypes.DRAGON):
+                    piece.piece_type is PieceTypes.DRAGON):
                 winner = self.tower_winner
                 if winner:
                     return winner
@@ -629,7 +681,7 @@ class Board:
 
     def get_piece_moves(self, cell, owner=None):
         piece = self.get_piece(cell)
-        if piece is None:
+        if piece is None or piece.piece_type is PieceTypes.TOWER:
             return []
 
         if owner is None:
@@ -650,7 +702,7 @@ class Board:
 
             if len(path) == boost:
                 move = Move(path.start, path.end)
-                if self.is_valid(move, owner):
+                if self.is_valid(move, owner, skip_pathfinding=True):
                     moves.append(move)
 
             if len(path) > boost:
@@ -658,7 +710,8 @@ class Board:
 
             for neighbor in path.end.neighbors:
                 if self.in_bounds(neighbor):
-                    piece = self.get_piece(neighbor)
+                    # Directly access piece to avoid a redundant bounds check
+                    piece = self.board[neighbor.row][neighbor.col]
                     if ((piece is None or len(path) + 1 == boost) and
                             neighbor not in path.path):
                         worklist.put(Path(path.path + [neighbor]))
@@ -677,6 +730,68 @@ class Board:
 
         return moves
 
+    def evaluate(self, owner):
+        score = 0
+        tower_count = 0
+        max_dragon_circle = 0
+        max_construction_circle = 0
+        for row in range(len(self.board)):
+            for col in range(len(self.board[row])):
+                cell = Cell(row, col)
+                piece = self.board[row][col]
+                if piece:
+                    if piece.owner == owner:
+                        score += piece.piece_type.value.score
+
+                        if piece.piece_type is PieceTypes.TOWER:
+                            tower_count += 1
+                            dragon_circle = 0
+                            for neighbor in cell.neighbors:
+                                neighbor_piece =\
+                                        self.board[neighbor.row][neighbor.col]
+                                if (neighbor_piece and
+                                        neighbor_piece.piece_type ==
+                                        PieceTypes.DRAGON):
+                                    dragon_circle += 1
+                            max_dragon_circle = max(dragon_circle,
+                                                    max_dragon_circle)
+
+                    elif piece.piece_type is PieceTypes.DRAGON:
+                        for neighbor in cell.neighbors:
+                            # Unsafe check; need to use get_piece
+                            neighbor_piece = self.get_piece(neighbor)
+                            claimants = set()
+                            if (neighbor_piece and
+                                    neighbor_piece.piece_type !=
+                                    PieceTypes.DRAGON and
+                                    neighbor_piece.owner not in claimants):
+                                claimants.add(neighbor_piece.owner)
+                            for claimant in claimants:
+                                if claimant == owner:
+                                    score += DRAGON_CLAIM_SCORE
+                                else:
+                                    score -= DRAGON_CLAIM_SCORE
+
+                    else:
+                        score -= piece.piece_type.value.score
+
+                elif self.inside_border(cell):
+                    # Don't count the first piece, since that's a given
+                    construction_circle = -1
+                    for neighbor in cell.neighbors:
+                        neighbor_piece = self.board[neighbor.row][neighbor.col]
+                        if neighbor_piece:
+                            if neighbor_piece.owner == owner:
+                                construction_circle += 1
+                            else:
+                                construction_circle -= 1
+                    max_construction_circle = max(construction_circle,
+                                                  max_construction_circle)
+        score += max_dragon_circle * DRAGON_CIRCLE_SCORE
+        if tower_count < self.ruleset.max_towers:
+            score += max_construction_circle * CONSTRUCTION_CIRCLE_SCORE
+        return score
+
 
 class Game:
     def __init__(self, ruleset, color=COLOR):
@@ -686,8 +801,10 @@ class Game:
         self.turn = 1
         self.history = [str(self.board)]
 
-    def get_next_turn(self):
-        return self.turn + 1 if self.turn < self.players else 1
+    def get_next_turn(self, turn=None):
+        if turn is None:
+            turn = self.turn
+        return turn + 1 if turn < self.players else 1
 
     def next_turn(self):
         defeated = self.board.defeated
@@ -698,7 +815,9 @@ class Game:
         while self.turn in defeated:
             self.turn = self.get_next_turn()
 
-    def get_prev_turn(self):
+    def get_prev_turn(self, turn=None):
+        if turn is None:
+            turn = self.turn
         return self.turn - 1 if self.turn > 1 else self.players
 
     def prev_turn(self):
@@ -732,29 +851,78 @@ class Game:
         self.next_turn()
         return self.board.capture_winner
 
+    def get_best_move(self, depth=2):
+        self.recursions = 0
+        start_time = time.time()
 
-def main():
-    parser = argparse.ArgumentParser(description='A Python implementation '
-                                     'of the Boost board game; CLI mode')
-    parser.add_argument('-r', '--ruleset',
-                        default=DEFAULT_RULESET,
-                        choices=rulesets.keys(),
-                        help='which ruleset to use')
-    parser.add_argument('-c', '--color', dest='color', action='store_true')
-    parser.add_argument('-C', '--no-color', dest='color', action='store_false')
-    parser.add_argument('-e', '--clear', dest='clear', action='store_true')
-    parser.add_argument('-E', '--no-clear', dest='clear', action='store_false')
-    parser.set_defaults(color=COLOR)
-    parser.set_defaults(clear=True)
-    args = parser.parse_args()
+        # Minimax with alpha-beta pruning
+        move, score = self.maxi(self.board, self.turn, self.turn,
+                                -INFINITY, INFINITY, depth)
 
-    if args.color and not COLOR:
-        print('Color is not supported on this system', file=sys.stderr)
-        print('Install termcolor via pip for color support', file=sys.stderr)
-        sys.exit(1)
+        if VERBOSE:
+            print('Chosen Move:', move)
+            print('Current Score:',
+                  self.board.move(move, self.turn, apply=False)
+                      .evaluate(self.turn))
+            print('Time Elapsed:', time.time() - start_time)
+            print('Potential Score:', score)
+            print('Recursions:', self.recursions)
 
-    color = args.color
-    game = Game(rulesets[args.ruleset], color)
+        return move
+
+    def maxi(self, board, owner, turn, alpha, beta, depth):
+        logging = self.recursions == 0
+        self.recursions += 1
+
+        if depth == 0:
+            return None, board.evaluate(owner)
+
+        best_move = None
+        move_number = 1
+        all_moves = board.get_owner_moves(turn)
+        for move in all_moves:
+            if logging and VERBOSE:
+                print(f'Considering move: {move_number}/{len(all_moves)}')
+                move_number += 1
+
+            new_board = board.move(move, turn, apply=False)
+            _, score = self.mini(new_board, owner, self.get_next_turn(turn),
+                                 alpha, beta, depth - 1)
+
+            if score >= beta:
+                # Beta cutoff
+                return best_move, beta
+
+            if score > alpha:
+                best_move = move
+                alpha = score
+
+        return best_move, alpha
+
+    def mini(self, board, owner, turn, alpha, beta, depth):
+        self.recursions += 1
+
+        if depth == 0:
+            return None, -board.evaluate(owner)
+
+        best_move = None
+        for move in board.get_owner_moves(turn):
+            new_board = board.move(move, turn, apply=False)
+            _, score = self.maxi(new_board, owner, self.get_next_turn(turn),
+                                 alpha, beta, depth - 1)
+
+            if score <= alpha:
+                # Alpha cutoff
+                return best_move, alpha
+
+            if score < beta:
+                best_move = move
+                beta = score
+
+        return best_move, beta
+
+
+def main(game):
     error = ''
     winner = None
     while True:
@@ -782,8 +950,8 @@ def main():
         elif move_input == 'forfeit':
             winner = game.forfeit()
         elif move_input == 'ai':
-            winner = game.move(random.choice(
-                game.board.get_owner_moves(game.turn)))
+            print('AI is thinking...')
+            winner = game.move(game.get_best_move(depth=4))
         else:
             try:
                 move = game.board.parse_move(move_input)
@@ -797,4 +965,41 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='A Python implementation '
+                                     'of the Boost board game; CLI mode')
+    parser.add_argument('-r', '--ruleset',
+                        default=DEFAULT_RULESET,
+                        choices=rulesets.keys(),
+                        help='which ruleset to use')
+    parser.add_argument('-c', '--color',
+                        dest='color',
+                        action='store_true',
+                        help='force colored output')
+    parser.add_argument('-C', '--no-color',
+                        dest='color',
+                        action='store_false',
+                        help='disable colored output')
+    parser.add_argument('-p', '--preserve',
+                        dest='clear',
+                        action='store_false',
+                        help="don't clear the screen between moves")
+    parser.add_argument('-v', '--verbose',
+                        action='store_true',
+                        help='display logging information for debugging; '
+                             'enables preserve')
+    parser.set_defaults(color=COLOR)
+    parser.set_defaults(clear=True)
+    args = parser.parse_args()
+
+    global VERBOSE
+    VERBOSE = args.verbose
+    if VERBOSE:
+        args.clear = False
+
+    if args.color and not COLOR:
+        print('Color is not supported on this system', file=sys.stderr)
+        print('Install termcolor via pip for color support', file=sys.stderr)
+        sys.exit(1)
+
+    game = Game(rulesets[args.ruleset], args.color)
+    main(game)
