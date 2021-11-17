@@ -253,6 +253,9 @@ class Board:
         # Slice off trailing newline
         return string[:-1]
 
+    def __hash__(self):
+        return hash(str(self))
+
     @property
     def cell_width(self):
         return 2 if COLOR or self.owners <= 3 else 3
@@ -859,13 +862,21 @@ class Board:
 
 
 class Game:
-    def __init__(self, ruleset, ai_depth=4):
+    def __init__(self, ruleset, depth=4, cache=True):
         self.ruleset = ruleset
         self.board = Board(ruleset)
         self.players = ruleset.players
-        self.ai_depth = ai_depth
+        self.depth = depth
         self.turn = 1
         self.history = [str(self.board)]
+        if cache:
+            self.maxi_cache = {}
+            self.mini_cache = {}
+        else:
+            self.maxi_cache = None
+            self.mini_cache = None
+        self.recursions = 0
+        self.cache_hits = 0
 
     def get_next_turn(self, turn=None):
         if turn is None:
@@ -919,15 +930,16 @@ class Game:
 
     def get_best_move(self):
         # Choose a completely random move at AI depth 0
-        if self.ai_depth == 0:
+        if self.depth == 0:
             return random.choice(self.board.get_owner_moves(self.turn))
 
-        self.recursions = 0
         start_time = time.time()
+        self.recursions = 0
+        self.cache_hits = 0
 
         # Minimax with alpha-beta pruning
         move, score = self.maxi(self.board, self.turn, self.turn,
-                                -INFINITY, INFINITY, self.ai_depth)
+                                -INFINITY, INFINITY, self.depth)
 
         if VERBOSE:
             end_time = time.time()
@@ -941,6 +953,14 @@ class Game:
 
         if depth == 0:
             return None, board.evaluate(owner)
+
+        if self.maxi_cache is not None:
+            cached = self.maxi_cache.get(hash((board, owner, turn)))
+            if cached:
+                if entry and VERBOSE:
+                    print('Returning cached value')
+                self.cache_hits += 1
+                return cached
 
         best_move = None
         best_next_move = None
@@ -991,17 +1011,24 @@ class Game:
 
             if entry and VERBOSE:
                 print(f'(score: {score}, immediate: {immediate_score})')
+                if self.cache_hits > 0:
+                    print(self.cache_hits, 'cache hit' +
+                          ('s' if self.cache_hits != 1 else ''))
+                    self.cache_hits = 0
                 new = ' (NEW):' if prev_best != best_move else ':      '
                 print(f'Current best move{new} {best_move}',
                       f'(alpha: {alpha}, immediate: {best_immediate})')
 
         if entry and VERBOSE:
             print('Chosen Move:', best_move)
-            print('Next Move:', best_next_move)
+            if self.players == 2:
+                print('Next Move:', best_next_move)
             print('Current Score:', best_immediate)
             print('Potential Score:', alpha)
             print('Recursions:', self.recursions)
 
+        if self.maxi_cache is not None:
+            self.maxi_cache[hash((board, owner, turn))] = best_move, alpha
         return best_move, alpha
 
     def mini(self, board, owner, turn, alpha, beta, depth):
@@ -1009,6 +1036,12 @@ class Game:
 
         if depth == 0:
             return None, -board.evaluate(owner)
+
+        if self.mini_cache is not None:
+            cached = self.mini_cache.get(hash((board, owner, turn)))
+            if cached:
+                self.cache_hits += 1
+                return cached
 
         best_move = None
         best_next_move = None
@@ -1036,12 +1069,14 @@ class Game:
                 beta = score
                 best_immediate = immediate_score
 
+        if self.mini_cache is not None:
+            self.mini_cache[hash((board, owner, turn))] = best_next_move, beta
         return best_next_move, beta
 
 
 def main(args):
-    game = Game(rulesets[args.ruleset], args.depth)
-    error = ''
+    game = Game(rulesets[args.ruleset], args.depth, args.cache)
+    message = ''
     winner = None
     auto = args.auto
     while True:
@@ -1051,19 +1086,21 @@ def main(args):
             print()
 
         print(game.board.pretty)
+        print()
 
         if winner:
             print(f'Player {winner} won the game!')
             input('Press enter to exit.')
             sys.exit(0)
 
-        print(error)
-        error = ''
+        print(message)
+        message = ''
 
         if auto:
-            print('Running AI automatically...')
+            print(f'Running AI for Player {game.turn}...')
             best_move = game.get_best_move()
             if best_move is not None:
+                message = f'Player {game.turn} (AI) chose {best_move}.'
                 winner = game.move(best_move)
             else:
                 game.next_turn()
@@ -1077,7 +1114,7 @@ def main(args):
                 sys.exit(0)
 
             if move_input == 'help':
-                error = '\n'\
+                message =\
                   'a1b2: move a piece from A1 to B2 (for example)\n'\
                   'd2: build a tower or promote a pawn at D2 (for example)\n'\
                   'undo: undo the last move\n'\
@@ -1086,11 +1123,12 @@ def main(args):
                   'forfeit: forfeit the current game without exiting\n'\
                   'exit: exit the current game\n'
             elif move_input == 'undo':
-                error = game.undo()
+                message = game.undo()
             elif move_input == 'ai':
-                print('AI is thinking...')
+                print(f'Running AI for Player {game.turn}...')
                 best_move = game.get_best_move()
                 if best_move is not None:
+                    message = f'Player {game.turn} (AI) chose {best_move}.'
                     winner = game.move(best_move)
                 else:
                     game.next_turn()
@@ -1104,12 +1142,13 @@ def main(args):
                 try:
                     move = game.board.parse_move(move_input)
                 except (ValueError, IndexError):
-                    error = '\n'\
+                    message =\
                         'Moves should be given in chess notation.\n'\
                         'e.g. "a1b2" to move from A1 to B2.\n'
                 else:
-                    error = game.get_move_error(move)
-                    if not error:
+                    message = game.get_move_error(move)
+                    if not message:
+                        message = f'Player {game.turn} chose {move}.'
                         winner = game.move(move)
 
 
@@ -1146,8 +1185,13 @@ if __name__ == '__main__':
                              'higher values equate to a stronger AI; '
                              'standard values range from 2-4; '
                              'use 0 for completely random AI moves')
+    parser.add_argument('-G' '--no-cache',
+                        action='store_false',
+                        help='disable caching the best AI move for previously '
+                             'considered board states')
     parser.set_defaults(color=TERMCOLOR)
     parser.set_defaults(clear=True)
+    parser.set_defaults(cache=True)
     args = parser.parse_args()
 
     global VERBOSE
