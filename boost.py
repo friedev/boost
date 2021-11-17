@@ -24,11 +24,11 @@ import queue
 
 from rulesets import rulesets, DEFAULT_RULESET
 
-COLOR = True
+TERMCOLOR = True
 try:
     from termcolor import colored
 except ImportError:
-    COLOR = False
+    TERMCOLOR = False
 
 INFINITY = float('inf')
 
@@ -204,9 +204,8 @@ class Path:
 
 
 class Board:
-    def __init__(self, ruleset, color=COLOR, board=None):
+    def __init__(self, ruleset, board=None):
         self.ruleset = ruleset
-        self.color = color
         self.board = Board.empty(ruleset.width, ruleset.height)
         if board:
             # Deep copy
@@ -237,7 +236,7 @@ class Board:
         return [[None for col in range(width)] for row in range(height)]
 
     def copy(self):
-        new_board = Board(self.ruleset, self.color, self.board)
+        new_board = Board(self.ruleset, self.board)
         new_board.forfeited = self.forfeited
         return new_board
 
@@ -256,7 +255,7 @@ class Board:
 
     @property
     def cell_width(self):
-        return 2 if self.color or self.owners <= 3 else 3
+        return 2 if COLOR or self.owners <= 3 else 3
 
     @property
     def pretty(self):
@@ -272,7 +271,7 @@ class Board:
             for col in range(len(self.board[row])):
                 piece = self.board[row][col]
                 if piece:
-                    if self.color:
+                    if COLOR:
                         string += colored(piece.symbol.upper(), piece.color)
                     else:
                         string += self.format_piece(piece)
@@ -860,9 +859,9 @@ class Board:
 
 
 class Game:
-    def __init__(self, ruleset, color=COLOR, ai_depth=4):
+    def __init__(self, ruleset, ai_depth=4):
         self.ruleset = ruleset
-        self.board = Board(ruleset, color)
+        self.board = Board(ruleset)
         self.players = ruleset.players
         self.ai_depth = ai_depth
         self.turn = 1
@@ -1041,7 +1040,7 @@ class Game:
 
 
 def main(args):
-    game = Game(rulesets[args.ruleset], args.color, args.depth)
+    game = Game(rulesets[args.ruleset], args.depth)
     error = ''
     winner = None
     auto = args.auto
@@ -1147,7 +1146,7 @@ if __name__ == '__main__':
                              'higher values equate to a stronger AI; '
                              'standard values range from 2-4; '
                              'use 0 for completely random AI moves')
-    parser.set_defaults(color=COLOR)
+    parser.set_defaults(color=TERMCOLOR)
     parser.set_defaults(clear=True)
     args = parser.parse_args()
 
@@ -1156,10 +1155,13 @@ if __name__ == '__main__':
     if VERBOSE:
         args.clear = False
 
-    if args.color and not COLOR:
+    if args.color and not TERMCOLOR:
         print('Color is not supported on this system', file=sys.stderr)
         print('Install termcolor via pip for color support', file=sys.stderr)
         sys.exit(1)
+
+    global COLOR
+    COLOR = args.color
 
     if args.depth < 0:
         print(f'AI minimax depth must be non-negative (was {args.depth})')
