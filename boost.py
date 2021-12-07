@@ -20,7 +20,7 @@ import os
 import random
 import sys
 import time
-import queue
+import heapq
 
 from rulesets import rulesets, DEFAULT_RULESET
 
@@ -459,11 +459,11 @@ class Board:
 
     def find_path(self, source, destination, distance=None):
         # A* with Manhattan distance heuristic (cell_distance)
-        worklist = queue.PriorityQueue()
-        worklist.put(Path([source], cell_distance(source, destination)))
+        worklist = [Path([source], cell_distance(source, destination))]
+        heapq.heapify(worklist)
 
-        while not worklist.empty():
-            path = worklist.get()
+        while len(worklist) > 0:
+            path = heapq.heappop(worklist)
 
             if distance is not None and len(path) > distance:
                 return None
@@ -478,10 +478,11 @@ class Board:
                     piece = self.board[neighbor.row][neighbor.col]
                     if ((piece is None or neighbor == destination) and
                             neighbor not in path.path):
-                        worklist.put(Path(path.path + [neighbor],
-                                          len(path) + 1 +
-                                          cell_distance(neighbor,
-                                                        destination)))
+                        heapq.heappush(worklist,
+                                       Path(path.path + [neighbor],
+                                            len(path) + 1 +
+                                            cell_distance(neighbor,
+                                                          destination)))
         return None
 
     def path_exists(self, move):
@@ -720,11 +721,11 @@ class Board:
         # Breadth-first search to find all possible moves
         boost = self.get_boost(cell)
         moves = set()
-        worklist = queue.Queue()
-        worklist.put(Path([cell]))
+        worklist = [Path([cell])]
+        heapq.heapify(worklist)
 
-        while not worklist.empty():
-            path = worklist.get()
+        while len(worklist) > 0:
+            path = heapq.heappop(worklist)
 
             if len(path) == boost:
                 move = Move(path.start, path.end)
@@ -740,7 +741,7 @@ class Board:
                     piece = self.board[neighbor.row][neighbor.col]
                     if ((piece is None or len(path) + 1 == boost) and
                             neighbor not in path.path):
-                        worklist.put(Path(path.path + [neighbor]))
+                        heapq.heappush(worklist, Path(path.path + [neighbor]))
         return moves
 
     def get_owner_moves(self, owner):
