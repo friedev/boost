@@ -21,7 +21,8 @@ from .boost import Game
 from .rulesets import rulesets, DEFAULT_RULESET
 from .graphics import render_for_discord, RendererNotFoundError
 
-HELP = '''**Commands:**
+HELP = '''\
+**Commands:**
 - `/boost`: view the current state of the game board
 - `/boost new`: start a new game
 - `/boost a1b2`: move a piece from A1 to B2 (for example)
@@ -110,7 +111,7 @@ wrappers = {}
 
 @client.event
 async def on_ready():
-    print('Logged in as {0.user}'.format(client))
+    print(f'Logged in as {client.user}')
 
 
 @client.event
