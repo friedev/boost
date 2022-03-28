@@ -1,6 +1,6 @@
 # Boost
 
-From the original description of Boost:
+Original description of Boost:
 
 > Boost is a turn-based abstract strategy board game like checkers, chess, Xiangqi, or Arimaa.
 > It was designed to be new and interesting for humans to play while still admitting a simple AI and supporting various homework assignments on algorithms and data structures in the SOFT 260 course at UNL.
@@ -10,6 +10,8 @@ The original implementation was a Progressive Web App made with [React.js](https
 
 This is a Python implementation that closely conforms to the original rules of the game.
 It can run interactively in a terminal session, or as a [Discord](https://discord.com) bot.
+
+For a transcription of the rules, see [RULES.md](RULES.md).
 
 ## Dependencies
 
