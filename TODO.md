@@ -1,29 +1,24 @@
 # TODO
 
+- `boost-bot` command installed via `setuptools` to run the bot, instead of a shell script
+	- Argument `boost-bot` to set xlink
+- Remove the long inline list of rulesets from argparse message and add a separate `--rulesets` flag to print them instead
 - Runtime configuration and persistence
 	- Choose ruleset via Discord
 	- Save/load game state to/from file
 	- Track player stats on Discord
 - Show information about previous move
-	- Location of previously moved piece before move
-	- Location of captured pieces
+	- Highlight last moved piece
+	- Draw last moved piece's previous location
 - Full rules compliance
-	- Skip player's turn if they have no possible moves
 	- Prevent moves that would lead to a previous board state
 - Maintainability
 	- Debug powers (ignore movement rules)
-	- Unit tests (unittest package or just a test() method)
+	- Unit tests
 	- Optional logging
-- Documentation
-	- Better error messages
-	- Docstrings for all functions/classes
-- New piece types
-	- Give each piece properties rather than hard-coding based on type
-	- Walls (for variants)
-	- New playable pieces (for variants)
 - Arbitrary game sizes
 	- >9 players
 	- >9 ranks
 	- >26 files
 	- Symmetric placement of dragons for >2 players
-- Refactor to support any arbitrary rulesets (e.g. chess)
+- Docstrings for all functions/classes
