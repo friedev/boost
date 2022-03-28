@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from string import ascii_lowercase
 from pathlib import Path
+from string import ascii_lowercase
 
 # For traceabilty to the code in `…/boost-app/src/features/play/board.js` in
 # the original PWA, which scales everything to pixels for compatibility with
@@ -185,6 +185,6 @@ def create_board(rectangle_width, rectangle_height, board, xlink=XLINK):
                f'{(scale + 2 * bleed) * board.width} ' +\
                f'{(scale + 2 * bleed) * board.height}'
     markings = create_board_markings(scale, board.width, board.height)
-    pieces = create_pieces(scale, board)
+    pieces = create_pieces(scale, board, xlink)
     return '<svg xmlns="http://www.w3.org/2000/svg" ' +\
            f'viewBox="{view_box}">{markings}{pieces}</svg>'

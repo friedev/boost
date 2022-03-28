@@ -13,11 +13,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import discord
 import sys
-from boost import Game
-from rulesets import rulesets, DEFAULT_RULESET
-from graphics import render_for_discord, RendererNotFoundError
+
+import discord
+
+from .boost import Game
+from .rulesets import rulesets, DEFAULT_RULESET
+from .graphics import render_for_discord, RendererNotFoundError
 
 HELP = '''**Commands:**
 - `/boost`: view the current state of the game board

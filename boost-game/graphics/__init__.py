@@ -14,6 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from io import BytesIO
+
 from discord import File
 
 from .board_svg import create_board

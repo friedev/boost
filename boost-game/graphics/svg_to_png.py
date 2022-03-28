@@ -16,13 +16,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from subprocess import run, CalledProcessError
 from string import Template
+from subprocess import run, CalledProcessError
+from tempfile import NamedTemporaryFile
 
 
 RENDERER_CANDIDATES = (
-    [
+    (
         'rsvg-convert',
         '-w',
         '$width',
@@ -33,8 +33,8 @@ RENDERER_CANDIDATES = (
         '-o',
         '$png_filename',
         '$svg_filename',
-    ],
-    [
+    ),
+    (
         'chromium',
         '--incognito',
         '--headless',
@@ -43,8 +43,8 @@ RENDERER_CANDIDATES = (
         '--default-background-color=${background}',
         '--screenshot=${png_filename}',
         '$svg_filename',
-    ],
-    [
+    ),
+    (
         'chrome',
         '--incognito',
         '--headless',
@@ -53,7 +53,7 @@ RENDERER_CANDIDATES = (
         '--default-background-color=${background}',
         '--screenshot=${png_filename}',
         '$svg_filename',
-    ],
+    ),
 )
 
 

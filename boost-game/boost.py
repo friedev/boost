@@ -13,16 +13,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import argparse
-import enum
-import math
-import os
+from argparse import ArgumentParser
+from enum import Enum
+from math import inf
+from math import floor
 import random
-import sys
-import time
-import heapq
+from sys import stderr, stdout
+from time import time
+from heapq import heapify, heappop, heappush
 
-from rulesets import rulesets, DEFAULT_RULESET
+from .rulesets import rulesets, DEFAULT_RULESET
 
 TERMCOLOR = True
 try:
@@ -30,7 +30,8 @@ try:
 except ImportError:
     TERMCOLOR = False
 
-INFINITY = float('inf')
+VERBOSE = None
+COLOR = None
 
 EMPTY_CELL_SHORT = '.'
 EMPTY_CELL_LONG = '. '
@@ -94,7 +95,7 @@ class PieceType:
         self.score = score
 
 
-class PieceTypes(enum.Enum):
+class PieceTypes(Enum):
     DRAGON = PieceType('Dragon', 'D')
     PAWN = PieceType('Pawn', 'P', PAWN_SCORE)
     KNIGHT = PieceType('Knight', 'K', KNIGHT_SCORE)
@@ -391,8 +392,8 @@ class Board:
         assert dragons >= 0
         if dragons == 0:
             return
-        middle_row = math.floor(self.height / 2)
-        middle_col = math.floor(self.width / 2)
+        middle_row = floor(self.height / 2)
+        middle_col = floor(self.width / 2)
         available_cells = []
         for row in range(middle_row):
             col_range = middle_col - 1 if row == middle_row else self.width
@@ -457,19 +458,19 @@ class Board:
                 boost += 1
         return boost
 
-    def find_path(self, source, destination, distance=None):
+    def find_path(self, source, destination, max_distance=None):
         # A* with Manhattan distance heuristic (cell_distance)
         worklist = [Path([source], cell_distance(source, destination))]
-        heapq.heapify(worklist)
+        heapify(worklist)
 
         while len(worklist) > 0:
-            path = heapq.heappop(worklist)
+            path = heappop(worklist)
 
-            if distance is not None and len(path) > distance:
+            if max_distance is not None and len(path) > max_distance:
                 return None
 
             if (path.end == destination and
-                    (distance is None or len(path) == distance)):
+                    (max_distance is None or len(path) == max_distance)):
                 return path
 
             for neighbor in path.end.neighbors:
@@ -478,11 +479,10 @@ class Board:
                     piece = self.board[neighbor.row][neighbor.col]
                     if ((piece is None or neighbor == destination) and
                             neighbor not in path.path):
-                        heapq.heappush(worklist,
-                                       Path(path.path + [neighbor],
-                                            len(path) + 1 +
-                                            cell_distance(neighbor,
-                                                          destination)))
+                        heappush(worklist,
+                                 Path(path.path + [neighbor],
+                                      len(path) + 1 +
+                                      cell_distance(neighbor, destination)))
         return None
 
     def path_exists(self, move):
@@ -542,34 +542,34 @@ class Board:
                 return ''
             if self.can_promote_knight(move.start, owner):
                 return ''
-            return 'You cannot build a tower here nor promote a pawn to a '\
-                   'knight here.'
+            return ('You cannot build a tower here nor promote a pawn to a '
+                    'knight here.')
 
         piece = self.get_piece(move.start)
         destination = self.get_piece(move.end)
         boost = self.get_boost(move.start)
         if not piece:
-            return f'There is no piece at {self.format_cell(move.start)} '\
-                    'to move.'
-        elif (piece.piece_type is PieceTypes.DRAGON and
+            return (f'There is no piece at {self.format_cell(move.start)} '
+                    'to move.')
+        if (piece.piece_type is PieceTypes.DRAGON and
                 not self.can_move_dragon(move.start, owner)):
-            return f'To move the {piece.name} at '\
-                   f'{self.format_cell(move.start)}, '\
-                   'you must have an adjacent piece.'
-        elif piece.owner != owner and piece.owner != DRAGON_OWNER:
-            return f'You are not the owner of the {piece.name} at '\
-                   f'{self.format_cell(move.start)}.'
-        elif piece.piece_type is PieceTypes.TOWER:
+            return (f'To move the {piece.name} at '
+                    f'{self.format_cell(move.start)}, '
+                    'you must have an adjacent piece.')
+        if piece.owner not in (owner, DRAGON_OWNER):
+            return (f'You are not the owner of the {piece.name} at '
+                    f'{self.format_cell(move.start)}.')
+        if piece.piece_type is PieceTypes.TOWER:
             return 'Towers cannot move.'
-        elif not skip_pathfinding and not self.path_exists(move):
+        if not skip_pathfinding and not self.path_exists(move):
             return f'You must move this piece exactly {boost} cell(s).'
-        elif not self.in_bounds(move.end):
+        if not self.in_bounds(move.end):
             return f'{self.format_cell(move.end)} is out of bounds.'
-        elif destination and piece.piece_type != PieceTypes.KNIGHT:
+        if destination and piece.piece_type != PieceTypes.KNIGHT:
             return f'A {piece.name} cannot capture pieces directly.'
-        elif destination and destination.owner == owner:
+        if destination and destination.owner == owner:
             return 'You cannot capture your own piece.'
-        elif destination and destination.piece_type is PieceTypes.DRAGON:
+        if destination and destination.piece_type is PieceTypes.DRAGON:
             return 'Dragons cannot be captured.'
         return ''
 
@@ -593,8 +593,7 @@ class Board:
                              neighbor.col + (neighbor.col - cell.col))
                 flanking_piece = self.get_piece(flank)
                 if (flanking_piece and
-                        (flanking_piece.owner == owner or
-                         flanking_piece.owner == DRAGON_OWNER)):
+                        flanking_piece.owner in (owner, DRAGON_OWNER)):
                     self.set_piece(neighbor, None)
                     captures += 1
         return captures
@@ -722,10 +721,10 @@ class Board:
         boost = self.get_boost(cell)
         moves = set()
         worklist = [Path([cell])]
-        heapq.heapify(worklist)
+        heapify(worklist)
 
         while len(worklist) > 0:
-            path = heapq.heappop(worklist)
+            path = heappop(worklist)
 
             if len(path) == boost:
                 move = Move(path.start, path.end)
@@ -741,7 +740,7 @@ class Board:
                     piece = self.board[neighbor.row][neighbor.col]
                     if ((piece is None or len(path) + 1 == boost) and
                             neighbor not in path.path):
-                        heapq.heappush(worklist, Path(path.path + [neighbor]))
+                        heappush(worklist, Path(path.path + [neighbor]))
         return moves
 
     def get_owner_moves(self, owner):
@@ -760,9 +759,9 @@ class Board:
 
         # Consider moves that create towers and knights first, as they are
         # likely to yield higher scores (best-first search)
-        return list(construction_moves) +\
-            list(promotion_moves) +\
-            list(normal_moves)
+        return (list(construction_moves) +
+                list(promotion_moves) +
+                list(normal_moves))
 
     def evaluate(self, owner):
         score = 0
@@ -792,7 +791,7 @@ class Board:
                                         PieceTypes.DRAGON):
                                     dragon_circle += 1
                             if dragon_circle == 4:
-                                return INFINITY
+                                return inf
                             max_dragon_circle = max(dragon_circle,
                                                     max_dragon_circle)
                         else:
@@ -850,13 +849,12 @@ class Board:
                     is_winner = False
                     break
             if is_winner:
-                return INFINITY
+                return inf
 
         # No capture victory, return normal evaluation
         score += max_dragon_circle * DRAGON_CIRCLE_SCORE
         if tower_count < self.ruleset.max_towers:
-            score += max_construction_circle *\
-                     CONSTRUCTION_CIRCLE_SCORE
+            score += max_construction_circle * CONSTRUCTION_CIRCLE_SCORE
         if tower_count > 0:
             score += dragon_claim_score
         return score
@@ -934,16 +932,20 @@ class Game:
         if self.depth == 0:
             return random.choice(self.board.get_owner_moves(self.turn))
 
-        start_time = time.time()
+        start_time = time()
         self.recursions = 0
         self.cache_hits = 0
 
         # Minimax with alpha-beta pruning
-        move, score = self.maxi(self.board, self.turn, self.turn,
-                                -INFINITY, INFINITY, self.depth)
+        move, _ = self.maxi(board=self.board,
+                            owner=self.turn,
+                            turn=self.turn,
+                            alpha=-inf,
+                            beta=inf,
+                            depth=self.depth)
 
         if VERBOSE:
-            end_time = time.time()
+            end_time = time()
             print('Time Elapsed:', end_time - start_time)
 
         return move
@@ -965,7 +967,7 @@ class Game:
 
         best_move = None
         best_next_move = None
-        best_immediate = -INFINITY
+        best_immediate = -inf
         move_number = 1
         all_moves = board.get_owner_moves(turn)
         for move in all_moves:
@@ -974,7 +976,7 @@ class Game:
                       f'{move_number:2d}/{len(all_moves):2d}:  {move} ',
                       end='')
                 prev_best = best_move
-                sys.stdout.flush()
+                stdout.flush()
                 move_number += 1
 
             # If a move exists, the player must make a move
@@ -986,18 +988,26 @@ class Game:
 
             if entry:
                 # Exit early if we can win with this move right now
-                if immediate_score == INFINITY:
+                if immediate_score == inf:
                     return move, immediate_score
 
             next_turn = self.get_next_turn(turn)
             if self.players == 2:
                 # Use minimax in a 2-player game
-                next_move, score = self.mini(new_board, owner, next_turn,
-                                             alpha, beta, depth - 1)
+                next_move, score = self.mini(new_board,
+                                             owner,
+                                             next_turn,
+                                             alpha,
+                                             beta,
+                                             depth - 1)
             else:
                 # Use max^n in a non-2-player game
-                next_move, score = self.maxi(new_board, owner, next_turn,
-                                             alpha, beta, depth - 1)
+                next_move, score = self.maxi(new_board,
+                                             owner,
+                                             next_turn,
+                                             alpha,
+                                             beta,
+                                             depth - 1)
 
             if not entry and score >= beta:
                 # Fail-soft beta cutoff
@@ -1046,7 +1056,7 @@ class Game:
 
         best_move = None
         best_next_move = None
-        best_immediate = INFINITY
+        best_immediate = inf
         for move in board.get_owner_moves(turn):
             # If a move exists, the player must make a move
             if best_move is None:
@@ -1056,8 +1066,12 @@ class Game:
             immediate_score = -new_board.evaluate(owner)
 
             next_turn = self.get_next_turn(turn)
-            next_move, score = self.maxi(new_board, owner, next_turn,
-                                         alpha, beta, depth - 1)
+            next_move, score = self.maxi(new_board,
+                                         owner,
+                                         next_turn,
+                                         alpha,
+                                         beta,
+                                         depth - 1)
 
             if score <= alpha:
                 # Fail-soft alpha cutoff
@@ -1075,87 +1089,9 @@ class Game:
         return best_next_move, beta
 
 
-def main(args):
-    game = Game(rulesets[args.ruleset], args.depth, args.cache)
-    message = ''
-    winner = None
-    auto = args.auto
-    while True:
-        if args.clear:
-            os.system('clear')
-        else:
-            print()
-
-        print(game.board.pretty)
-        print()
-
-        if winner:
-            print(f'Player {winner} won the game!')
-            input('Press enter to exit.')
-            sys.exit(0)
-
-        print(message)
-        message = ''
-
-        if auto:
-            print(f'Running AI for Player {game.turn}...')
-            best_move = game.get_best_move()
-            if best_move is not None:
-                message = f'Player {game.turn} (AI) chose {best_move}.'
-                winner = game.move(best_move)
-            else:
-                game.next_turn()
-
-        else:
-            try:
-                move_input = input(f"Player {game.turn}'s Move: ")
-            except (KeyboardInterrupt, EOFError):
-                # Don't print a traceback on user-generated exit signals
-                print()
-                sys.exit(0)
-
-            if move_input == 'help':
-                message =\
-                  'a1b2: move a piece from A1 to B2 (for example)\n'\
-                  'd2: build a tower or promote a pawn at D2 (for example)\n'\
-                  'undo: undo the last move\n'\
-                  'ai: let an AI move for the current player\n'\
-                  'auto: run the AI automatically for every move\n'\
-                  'forfeit: forfeit the current game without exiting\n'\
-                  'exit: exit the current game\n'
-            elif move_input == 'undo':
-                message = game.undo()
-            elif move_input == 'ai':
-                print(f'Running AI for Player {game.turn}...')
-                best_move = game.get_best_move()
-                if best_move is not None:
-                    message = f'Player {game.turn} (AI) chose {best_move}.'
-                    winner = game.move(best_move)
-                else:
-                    game.next_turn()
-            elif move_input == 'auto':
-                auto = True
-            elif move_input == 'forfeit':
-                winner = game.forfeit()
-            elif move_input == 'exit':
-                sys.exit(0)
-            else:
-                try:
-                    move = game.board.parse_move(move_input)
-                except (ValueError, IndexError):
-                    message =\
-                        'Moves should be given in chess notation.\n'\
-                        'e.g. "a1b2" to move from A1 to B2.\n'
-                else:
-                    message = game.get_move_error(move)
-                    if not message:
-                        message = f'Player {game.turn} chose {move}.'
-                        winner = game.move(move)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A Python implementation '
-                                     'of the Boost board game; CLI mode')
+def main():
+    parser = ArgumentParser(description='A Python implementation of the Boost '
+                                        'board game; CLI mode')
     parser.add_argument('-r', '--ruleset',
                         default=DEFAULT_RULESET,
                         choices=rulesets.keys(),
@@ -1168,14 +1104,9 @@ if __name__ == '__main__':
                         dest='color',
                         action='store_false',
                         help='disable colored output')
-    parser.add_argument('-p', '--preserve',
-                        dest='clear',
-                        action='store_false',
-                        help="don't clear the screen between moves")
     parser.add_argument('-v', '--verbose',
                         action='store_true',
-                        help='display logging information for debugging; '
-                             'enables preserve')
+                        help='display logging information for debugging')
     parser.add_argument('-a', '--auto',
                         action='store_true',
                         help='enable auto mode automatically')
@@ -1191,25 +1122,102 @@ if __name__ == '__main__':
                         help='disable caching the best AI move for previously '
                              'considered board states')
     parser.set_defaults(color=TERMCOLOR)
-    parser.set_defaults(clear=True)
     parser.set_defaults(cache=True)
     args = parser.parse_args()
 
     global VERBOSE
     VERBOSE = args.verbose
-    if VERBOSE:
-        args.clear = False
 
     if args.color and not TERMCOLOR:
-        print('Color is not supported on this system', file=sys.stderr)
-        print('Install termcolor via pip for color support', file=sys.stderr)
-        sys.exit(1)
+        print('Color is not supported on this system', file=stderr)
+        print('Install termcolor via pip for color support', file=stderr)
+        return 1
 
     global COLOR
     COLOR = args.color
 
     if args.depth < 0:
         print(f'AI minimax depth must be non-negative (was {args.depth})')
-        sys.exit(1)
+        return 1
 
-    main(args)
+    game = Game(rulesets[args.ruleset], args.depth, args.cache)
+    message = ''
+    winner = None
+    auto = args.auto
+    moved = False
+    print(game.board.pretty)
+    print()
+    while True:
+        if moved:
+            print()
+            print(game.board.pretty)
+            print()
+            moved = False
+
+        if winner:
+            print(f'Player {winner} won the game!')
+            input('Press enter to exit.')
+            return 0
+
+        if message:
+            print(message)
+            message = ''
+
+        if auto:
+            print(f'Running AI for Player {game.turn}...')
+            best_move = game.get_best_move()
+            if best_move is not None:
+                message = f'Player {game.turn} (AI) chose {best_move}.'
+                winner = game.move(best_move)
+                moved = True
+            else:
+                game.next_turn()
+
+        else:
+            # Don't print a traceback on user-generated exit signals
+            try:
+                move_input = input(f"Player {game.turn}'s Move: ")
+            except KeyboardInterrupt:
+                print()
+                return 1
+            except EOFError:
+                print()
+                return 0
+
+            if move_input == 'help':
+                message = (
+                    'a1b2: move a piece from A1 to B2 (for example)\n'
+                    'd2: build a tower or promote a pawn at D2 (for example)\n'
+                    'undo: undo the last move\n'
+                    'ai: let an AI move for the current player\n'
+                    'auto: run the AI automatically for every move\n'
+                    'forfeit: forfeit the current game without exiting\n'
+                    'exit: exit the current game'
+                )
+            elif move_input == 'undo':
+                message = game.undo()
+            elif move_input == 'ai':
+                print(f'Running AI for Player {game.turn}...')
+                best_move = game.get_best_move()
+                if best_move is not None:
+                    winner = game.move(best_move)
+                    moved = True
+                else:
+                    game.next_turn()
+            elif move_input == 'auto':
+                auto = True
+            elif move_input == 'forfeit':
+                winner = game.forfeit()
+            elif move_input == 'exit':
+                return 0
+            else:
+                try:
+                    move = game.board.parse_move(move_input)
+                except (ValueError, IndexError):
+                    message = ('Moves should be given in algebraic notation.\n'
+                               'e.g. "a1b2" to move from A1 to B2.')
+                else:
+                    message = game.get_move_error(move)
+                    if not message:
+                        winner = game.move(move)
+                        moved = True
