@@ -31,13 +31,13 @@ HELP = '''\
 - `/boost forfeit`: forfeit the current game
 - `/boost info`: print information about the bot
 
-**Rules:** <https://github.com/Maugrift/boost-py/blob/master/RULES.md>'''
+**Rules:** <https://github.com/Maugrift/boost/blob/master/RULES.md>'''
 
 INFO = '''\
 This bot uses a Python implementation of the Boost board game\
 designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
 - Author: Aaron Friesen - <https://maugrift.com>
-- Source Code: <https://github.com/Maugrift/boost-py>'''
+- Source Code: <https://github.com/Maugrift/boost>'''
 
 # If true, each Discord user may control multiple groups of pieces in the game
 # Playing on another registered player's turn is still forbidden
