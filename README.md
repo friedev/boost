@@ -35,7 +35,7 @@ Alternatively, if Chromium or Chrome is installed and available on your `PATH`, 
 
 ### Terminal
 
-To play boost-py from the command line, simply run:
+To play Boost from the command line, simply run:
 
 ```sh
 boost
@@ -51,7 +51,7 @@ boost --help
 
 ### Discord Bot
 
-To run boost-py as a Discord bot, you must first create a bot account via the [Discord Developer Portal](https://discord.com/developers/applications).
+To serve the Boost Discord bot, you must first create a bot account via the [Discord Developer Portal](https://discord.com/developers/applications).
 This is a standard process and you can find documentation for it online.
 
 Then:

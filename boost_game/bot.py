@@ -34,7 +34,7 @@ HELP = '''\
 **Rules:** <https://github.com/Maugrift/boost-py/blob/master/RULES.md>'''
 
 INFO = '''\
-**boost-py** is a Python implementation of the Boost board game\
+This bot uses a Python implementation of the Boost board game\
 designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
 - Author: Aaron Friesen - <https://maugrift.com>
 - Source Code: <https://github.com/Maugrift/boost-py>'''
