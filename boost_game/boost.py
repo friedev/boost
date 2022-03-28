@@ -1161,6 +1161,7 @@ def main():
 
         if message:
             print(message)
+            print()
             message = ''
 
         if auto:
@@ -1183,6 +1184,9 @@ def main():
             except EOFError:
                 print()
                 return 0
+
+            if move_input == '':
+                continue
 
             if move_input == 'help':
                 message = (
