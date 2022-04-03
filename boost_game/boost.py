@@ -1,17 +1,6 @@
-# Copyright (C) 2020 Aaron Friesen <maugrift@maugrift.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+Boost game implementation, AI, and command line interface.
+"""
 
 from argparse import ArgumentParser
 from enum import Enum
@@ -66,8 +55,10 @@ class Cell:
         self.col = col
 
     def __str__(self):
-        # Assumes a 9-row board
-        return chr(self.col + ord("a")) + str(9 - self.row)
+        # Assumes a board of size 9
+        if 0 <= self.row < 9 and 0 <= self.col < 9:
+            return chr(self.col + ord("a")) + str(9 - self.row)
+        return f"{self.col},{self.row}"
 
     def __repr__(self):
         return str(self)
@@ -209,6 +200,12 @@ class Path:
     def __len__(self):
         return len(self.path) - 1
 
+    def __contains__(self, item):
+        return item in self.path
+
+    def __str__(self):
+        return str(self.path)
+
 
 class Board:
     def __init__(self, ruleset, board=None):
@@ -301,19 +298,18 @@ class Board:
 
     @property
     def cells(self):
-        cells = []
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
-                cells.append(Cell(row, col))
-        return cells
+                yield Cell(row, col)
+
+    def __iter__(self):
+        yield from self.cells
 
     @property
     def tower_cells(self):
-        cells = []
         for row in range(1, len(self.board) - 1):
             for col in range(1, len(self.board[row]) - 1):
-                cells.append(Cell(row, col))
-        return cells
+                yield Cell(row, col)
 
     @property
     def piece_counts(self):
@@ -335,13 +331,11 @@ class Board:
     def get_owned_pieces(self, owners):
         if not isinstance(owners, list):
             owners = [owners]
-        owner_pieces = []
         for row in range(len(self.board)):
             for col in range(len(self.board[row])):
                 piece = self.get_piece(Cell(row, col))
                 if piece is not None and piece.owner in owners:
-                    owner_pieces.append(piece)
-        return owner_pieces
+                    yield piece
 
     def parse_cell(self, string):
         row_string = string[0]
@@ -399,67 +393,54 @@ class Board:
         assert dragons >= 0
         if dragons == 0:
             return
+
         middle_row = floor(self.height / 2)
         middle_col = floor(self.width / 2)
         available_cells = []
-        for row in range(middle_row):
-            col_range = middle_col - 1 if row == middle_row else self.width
-            for col in range(col_range):
+        for row in range(self.height):
+            for col in range(middle_col - 1):
                 if not self.board[row][col]:
                     available_cells.append(Cell(row, col))
-        remaining_dragons = dragons
+
         # To place an odd number of dragons, we have to place one in the
         # middle, since it's the only non-mirrored cell
+        remaining_dragons = dragons
         dragon = Piece(DRAGON_OWNER, PieceTypes.DRAGON)
         if dragons % 2 != 0:
             if self.board[middle_row][middle_col]:
                 raise ValueError(
-                    "Cannot place an odd number of dragons on this "
-                    "board (center must be unoccupied)"
+                    "Cannot place an odd number of dragons on this board "
+                    "(center must be unoccupied)"
                 )
             self.board[middle_row][middle_col] = dragon
             remaining_dragons -= 1
+
         while remaining_dragons > 0:
             cell = random.choice(available_cells)
             available_cells.remove(cell)
+
             mirror_row = self.height - cell.row - 1
             mirror_col = self.width - cell.col - 1
-            if not self.board[mirror_row][mirror_col]:
+            mirror_cell = Cell(mirror_row, mirror_col)
+            if not self.get_piece(mirror_cell):
                 self.set_piece(cell, dragon)
-                self.board[mirror_row][mirror_col] = dragon
+                self.set_piece(mirror_cell, dragon)
                 remaining_dragons -= 2
 
     def in_bounds(self, cell):
-        assert cell
-        return (
-            cell.row >= 0
-            and cell.row < len(self.board)
-            and cell.col >= 0
-            and cell.col < len(self.board[cell.row])
-        )
+        return 0 <= cell.row < self.height and 0 <= cell.col < self.width
 
     def on_border(self, cell):
-        assert cell
-        return (
-            cell.row == 0
-            and cell.row == len(self.board) - 1
-            and cell.col == 0
-            and cell.col == len(self.board[cell.row]) - 1
+        return cell.row in (0, self.height - 1) and cell.col in (
+            0,
+            self.width - 1,
         )
 
     def inside_border(self, cell):
-        assert cell
-        return (
-            cell.row > 0
-            and cell.row < len(self.board) - 1
-            and cell.col > 0
-            and cell.col < len(self.board[cell.row]) - 1
-        )
+        return 0 < cell.row < self.height - 1 and 0 < cell.col < self.width - 1
 
     def get_piece(self, cell):
-        if not self.in_bounds(cell):
-            return None
-        return self.board[cell.row][cell.col]
+        return self.board[cell.row][cell.col] if self.in_bounds(cell) else None
 
     def set_piece(self, cell, piece):
         if self.in_bounds(cell):
@@ -472,7 +453,7 @@ class Board:
                 boost += 1
         return boost
 
-    def find_path(self, source, destination, max_distance=None):
+    def find_path(self, source, destination, target_distance=None):
         # A* with Manhattan distance heuristic (cell_distance)
         worklist = [Path([source], cell_distance(source, destination))]
         heapify(worklist)
@@ -480,30 +461,29 @@ class Board:
         while len(worklist) > 0:
             path = heappop(worklist)
 
-            if max_distance is not None and len(path) > max_distance:
-                return None
-
             if path.end == destination and (
-                max_distance is None or len(path) == max_distance
+                target_distance is None or len(path) == target_distance
             ):
                 return path
 
+            if len(path) == target_distance:
+                continue
+
             for neighbor in path.end.neighbors:
-                if self.in_bounds(neighbor):
-                    # Directly access piece to avoid a redundant bounds check
-                    piece = self.board[neighbor.row][neighbor.col]
-                    if (
-                        piece is None or neighbor == destination
-                    ) and neighbor not in path.path:
-                        heappush(
-                            worklist,
-                            Path(
-                                path.path + [neighbor],
-                                len(path)
-                                + 1
-                                + cell_distance(neighbor, destination),
-                            ),
-                        )
+                if not self.in_bounds(neighbor) or neighbor in path:
+                    continue
+
+                piece = self.get_piece(neighbor)
+                if piece is not None:
+                    continue
+
+                heappush(
+                    worklist,
+                    Path(
+                        path.path + [neighbor],
+                        len(path) + 1 + cell_distance(neighbor, destination),
+                    ),
+                )
         return None
 
     def path_exists(self, move):
@@ -677,29 +657,17 @@ class Board:
                     return candidate
         return None
 
-    @property
-    def tower_winner(self):
-        for cell in self.tower_cells:
-            tower = self.get_piece(cell)
-            if tower and tower.piece_type is PieceTypes.TOWER:
-                dragons = 0
-                for neighbor in cell.neighbors:
-                    dragon = self.get_piece(neighbor)
-                    if not dragon or dragon.piece_type != PieceTypes.DRAGON:
-                        break
-                    dragons += 1
-                if dragons == 4:
-                    return tower.owner
-        return None
+    def is_dragon_tower(self, cell):
+        tower = self.get_piece(cell)
+        if not tower or tower.piece_type is not PieceTypes.TOWER:
+            return False
 
-    @property
-    def winner(self):
-        capture_winner = self.capture_winner
-        if capture_winner is not None:
-            return capture_winner
-        if self.ruleset.tower_victory:
-            return self.tower_winner
-        return None
+        for neighbor in cell.neighbors:
+            dragon = self.get_piece(neighbor)
+            if dragon is None or dragon.piece_type != PieceTypes.DRAGON:
+                return False
+
+        return True
 
     def move(self, move, owner, apply=True):
         if not apply:
@@ -753,9 +721,9 @@ class Board:
                 self.ruleset.tower_victory
                 and piece.piece_type is PieceTypes.DRAGON
             ):
-                winner = self.tower_winner
-                if winner:
-                    return winner
+                for neighbor in move.end.neighbors:
+                    if self.is_dragon_tower(neighbor):
+                        return self.get_piece(neighbor).owner
         return None
 
     def get_piece_moves(self, cell, owner=None):
@@ -781,22 +749,24 @@ class Board:
         while len(worklist) > 0:
             path = heappop(worklist)
 
+            if len(path) > boost:
+                return moves
+
             if len(path) == boost:
                 move = Move(path.start, path.end)
                 if self.is_valid(move, owner, skip_pathfinding=True):
                     moves.add(move)
-
-            if len(path) > boost:
-                return moves
+                continue
 
             for neighbor in path.end.neighbors:
-                if self.in_bounds(neighbor):
-                    # Directly access piece to avoid a redundant bounds check
-                    piece = self.board[neighbor.row][neighbor.col]
-                    if (
-                        piece is None or len(path) + 1 == boost
-                    ) and neighbor not in path.path:
-                        heappush(worklist, Path(path.path + [neighbor]))
+                if not self.in_bounds(neighbor) or neighbor in path:
+                    continue
+
+                piece = self.get_piece(neighbor)
+                if piece is not None:
+                    continue
+
+                heappush(worklist, Path(path.path + [neighbor]))
         return moves
 
     def get_owner_moves(self, owner):
@@ -804,14 +774,12 @@ class Board:
         construction_moves = set()
         promotion_moves = set()
         normal_moves = set()
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                cell = Cell(row, col)
-                normal_moves |= self.get_piece_moves(cell, owner)
-                if self.can_build_tower(cell, owner):
-                    construction_moves.add(Move(cell))
-                elif self.can_promote_knight(cell, owner):
-                    promotion_moves.add(Move(cell))
+        for cell in self.cells:
+            normal_moves |= self.get_piece_moves(cell, owner)
+            if self.can_build_tower(cell, owner):
+                construction_moves.add(Move(cell))
+            elif self.can_promote_knight(cell, owner):
+                promotion_moves.add(Move(cell))
 
         # Consider moves that create towers and knights first, as they are
         # likely to yield higher scores (best-first search)
@@ -821,91 +789,117 @@ class Board:
             + list(normal_moves)
         )
 
+    def mobility_score(self, cell):
+        piece = self.get_piece(cell)
+        if not piece:
+            return 0
+
+        if piece.piece_type is PieceTypes.PAWN and self.inside_border(cell):
+            return ACTIVE_PAWN_SCORE
+
+        if piece.piece_type is not PieceTypes.KNIGHT:
+            return 0
+
+        boost = self.get_boost(cell)
+        score = 0
+        if 1 < boost < 5:
+            score += MOBILE_KNIGHT_SCORE * boost
+        if self.inside_border(cell):
+            score += ACTIVE_KNIGHT_SCORE
+        return score
+
+    def count_dragon_circle(self, cell):
+        piece = self.get_piece(cell)
+        if piece.piece_type is not PieceTypes.TOWER:
+            return 0
+
+        dragon_circle = 0
+        for neighbor in cell.neighbors:
+            neighbor_piece = self.get_piece(neighbor)
+            if (
+                neighbor_piece
+                and neighbor_piece.piece_type == PieceTypes.DRAGON
+            ):
+                dragon_circle += 1
+        return dragon_circle
+
+    def count_construction_circle(self, cell, owner):
+        if not self.inside_border(cell):
+            return 0
+
+        piece = self.get_piece(cell)
+        if piece:
+            return 0
+
+        # Don't award any points if there is just one piece in the "circle"
+        construction_circle = -1
+        for neighbor in cell.neighbors:
+            neighbor_piece = self.get_piece(neighbor)
+            if neighbor_piece:
+                if neighbor_piece.owner == owner:
+                    construction_circle += 1
+                else:
+                    construction_circle -= 1
+        return max(construction_circle, 0)
+
+    def count_dragon_claims(self, cell, owner):
+        piece = self.get_piece(cell)
+        if piece.piece_type is not PieceTypes.DRAGON:
+            return 0
+
+        dragon_claims = 0
+        for neighbor in cell.neighbors:
+            neighbor_piece = self.get_piece(neighbor)
+            claimants = set()
+            if (
+                neighbor_piece
+                and neighbor_piece.piece_type != PieceTypes.DRAGON
+            ):
+                claimants.add(neighbor_piece.owner)
+            for claimant in claimants:
+                if claimant == owner:
+                    dragon_claims += 1
+                else:
+                    dragon_claims -= 1
+        return dragon_claims
+
     def evaluate(self, owner):
         score = 0
         tower_count = 0
         max_dragon_circle = 0
         max_construction_circle = 0
-        dragon_claim_score = 0
+        dragon_claims = 0
         owner_pieces = [0] * self.owners
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                cell = Cell(row, col)
-                piece = self.board[row][col]
-                if piece:
-                    # Owned piece valuation
-                    if piece.owner == owner:
-                        score += piece.piece_type.value.score
-
-                        # Dragon circle scoring
-                        if piece.piece_type is PieceTypes.TOWER:
-                            tower_count += 1
-                            dragon_circle = 0
-                            for neighbor in cell.neighbors:
-                                neighbor_piece = self.board[neighbor.row][
-                                    neighbor.col
-                                ]
-                                if (
-                                    neighbor_piece
-                                    and neighbor_piece.piece_type
-                                    == PieceTypes.DRAGON
-                                ):
-                                    dragon_circle += 1
-                            if dragon_circle == 4:
-                                return inf
-                            max_dragon_circle = max(
-                                dragon_circle, max_dragon_circle
-                            )
-                        else:
-                            # Piece activity and mobility scoring
-                            if piece.piece_type is PieceTypes.KNIGHT:
-                                boost = self.get_boost(cell)
-                                if 1 < boost < 5:
-                                    score += MOBILE_KNIGHT_SCORE * boost
-                                if self.inside_border(cell):
-                                    score += ACTIVE_KNIGHT_SCORE
-                            elif self.inside_border(cell):
-                                score += ACTIVE_PAWN_SCORE
-
-                    # Dragon claim scoring
-                    elif piece.piece_type is PieceTypes.DRAGON:
-                        for neighbor in cell.neighbors:
-                            # Unsafe check; need to use get_piece
-                            neighbor_piece = self.get_piece(neighbor)
-                            claimants = set()
-                            if (
-                                neighbor_piece
-                                and neighbor_piece.piece_type
-                                != PieceTypes.DRAGON
-                            ):
-                                claimants.add(neighbor_piece.owner)
-                            for claimant in claimants:
-                                if claimant == owner:
-                                    dragon_claim_score += DRAGON_CLAIM_SCORE
-                                else:
-                                    dragon_claim_score -= DRAGON_CLAIM_SCORE
-
-                    # Opponent piece valuation
-                    else:
-                        score -= piece.piece_type.value.score
-                        owner_pieces[piece.owner] += 1
-
-                # Construction circle scoring
-                elif self.inside_border(cell):
-                    # Don't count the first piece, since that's a given
-                    construction_circle = -1
-                    for neighbor in cell.neighbors:
-                        neighbor_piece = self.board[neighbor.row][neighbor.col]
-                        if neighbor_piece:
-                            if neighbor_piece.owner == owner:
-                                construction_circle += 1
-                            else:
-                                construction_circle -= 1
-                    max_construction_circle = max(
-                        construction_circle, max_construction_circle
+        for cell in self.cells:
+            piece = self.get_piece(cell)
+            if piece:
+                # Owned piece valuation
+                if piece.owner == owner:
+                    score += piece.piece_type.value.score
+                    score += self.mobility_score(cell)
+                    max_dragon_circle = max(
+                        self.count_dragon_circle(cell), max_dragon_circle
                     )
+                    if max_dragon_circle == 4:
+                        return inf
 
-        # Check for capture victory
+                # Dragon claim scoring
+                elif piece.piece_type is PieceTypes.DRAGON:
+                    dragon_claims += self.count_dragon_claims(cell, owner)
+
+                # Opponent piece valuation
+                else:
+                    score -= piece.piece_type.value.score
+
+                owner_pieces[piece.owner] += 1
+            else:
+                # Construction circle scoring
+                max_construction_circle = max(
+                    self.count_construction_circle(cell, owner),
+                    max_construction_circle,
+                )
+
+        # Check for capture victory (in a multiplayer game)
         if self.owners > 2:
             is_winner = True
             for other in range(1, self.owners):
@@ -923,7 +917,7 @@ class Board:
         if tower_count < self.ruleset.max_towers:
             score += max_construction_circle * CONSTRUCTION_CIRCLE_SCORE
         if tower_count > 0:
-            score += dragon_claim_score
+            score += dragon_claims * DRAGON_CLAIM_SCORE
         return score
 
 
