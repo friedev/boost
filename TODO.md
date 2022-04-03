@@ -1,7 +1,7 @@
 # TODO
 
 - `boost-bot` command installed via `setuptools` to run the bot, instead of a shell script
-	- Argument `boost-bot` to set xlink
+	- Argument for `boost-bot` to set xlink
 - Remove the long inline list of rulesets from argparse message and add a separate `--rulesets` flag to print them instead
 - Runtime configuration and persistence
 	- Choose ruleset via Discord
@@ -13,12 +13,13 @@
 - Full rules compliance
 	- Prevent moves that would lead to a previous board state
 - Maintainability
-	- Debug powers (ignore movement rules)
 	- Unit tests
-	- Optional logging
+	- Logging for the bot
+	- Debug powers (ignore movement rules)
 - Arbitrary game sizes
 	- >9 players
 	- >9 ranks
 	- >26 files
 	- Symmetric placement of dragons for >2 players
 - Docstrings for all functions/classes
+- Optional curses UI?

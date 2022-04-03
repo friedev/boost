@@ -13,29 +13,18 @@ It can run interactively in a terminal session, or as a [Discord](https://discor
 
 For a transcription of the rules, see [RULES.md](RULES.md).
 
-## Dependencies
-
-- Python 3
-- `termcolor` (optional) - for colored output on the terminal
-- `discord.py` (optional) - for Discord bot functionality
-- RSVG/Chromium/Chrome (optional) - for graphics on Discord
-
 ## Installation
 
-To install Boost, clone the repository and run:
-
 ```sh
-pip install .
+pip install boost-game
 ```
 
-For graphics on Discord, installing `librsvg` (on Arch-based systems) or `librsvg2-bin` (on Debian-based systems) is recommended.
+For graphics on Discord, install `librsvg` (on Arch-based systems) or `librsvg2-bin` (on Debian-based systems).
 Alternatively, if Chromium or Chrome is installed and available on your `PATH`, it can be used instead, although browser-based rendering is more resource intensive.
 
 ## Usage
 
 ### Terminal
-
-To play Boost from the command line, simply run:
 
 ```sh
 boost
@@ -72,6 +61,7 @@ After inviting the bot to a server, you can view a list of commands by sending `
 
 If you're using RSVG and the Discord bot is displaying a board with no pieces, try setting `XLINK` to `True` in `graphics/board_svg.py`.
 (Change the line with `XLINK = False` to `XLINK = True`.)
+Eventually, this will be made into a command line switch.
 
 ## Contributing
 
