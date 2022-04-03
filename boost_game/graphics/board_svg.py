@@ -32,17 +32,17 @@ UNSCALED_TARGET_THICKNESS = 1 / 16
 SCALED_BOARD_SHADOW = 5
 SCALED_BOARD_ROUNDING = 8
 
-PIECES_DIRECTORY = (Path(__file__).parent / 'pieces').absolute()
+PIECES_DIRECTORY = (Path(__file__).parent / "pieces").absolute()
 COLORED_PIECES = {
-    'Pawn',
-    'Knight',
-    'Tower',
+    "Pawn",
+    "Knight",
+    "Tower",
 }
 PIECE_FILENAMES = {
-    'Dragon': 'dragon.svg',
-    'Pawn': 'pawn.svg',
-    'Knight': 'knight.svg',
-    'Tower': 'tower.svg',
+    "Dragon": "dragon.svg",
+    "Pawn": "pawn.svg",
+    "Knight": "knight.svg",
+    "Tower": "tower.svg",
 }
 
 # If true, use "xlink:href" instead of just "href" in SVG <image> tags
@@ -68,7 +68,7 @@ def get_image_path(piece):
 
 
 def create_surface(scale, width, height):
-    return f'''
+    return f"""
   <filter id="shadow">
     <feGaussianBlur in="SourceAlpha" stdDeviation="{SCALED_BOARD_SHADOW}" />
     <feMerge>
@@ -85,11 +85,11 @@ def create_surface(scale, width, height):
     stroke="none"
     fill="rgba(127, 199, 127, 1)"
     filter="url(#shadow)" />
-'''
+"""
 
 
 def create_file(scale, x, length, name):
-    return f'''
+    return f"""
   <line
     x1="{scale * (x + 0.5)}"
     y1="{scale * length}"
@@ -104,11 +104,11 @@ def create_file(scale, x, length, name):
     dominant-baseline="middle"
     font-family="sans-serif"
     font-size="{scale * UNSCALED_FONT_HEIGHT}">{name}</text>
-'''
+"""
 
 
 def create_rank(scale, y, max_y, length, name):
-    return f'''
+    return f"""
   <line
     x1="{0}"
     y1="{scale * ((max_y - y) + 0.5)}"
@@ -123,18 +123,18 @@ def create_rank(scale, y, max_y, length, name):
     dominant-baseline="middle"
     font-family="sans-serif"
     font-size="{scale * UNSCALED_FONT_HEIGHT}">{name}</text>
-'''
+"""
 
 
 def create_dot(scale, x, y, max_y):
-    return f'''
+    return f"""
 <circle
   cx="{scale * (x + 0.5)}"
   cy="{scale * ((max_y - y) + 0.5)}"
   r="{scale * UNSCALED_DOT_RADIUS}"
   stroke="rgba(0, 0, 0, 1)"
   fill="rgba(0, 0, 0, 1)" />
-'''
+"""
 
 
 def create_board_markings(scale, width, height):
@@ -142,23 +142,24 @@ def create_board_markings(scale, width, height):
     for x in range(width):
         results.append(create_file(scale, x, height, prettify_file(x)))
     for y in range(height):
-        results.append(create_rank(scale, y, height - 1, width,
-                       prettify_rank(y)))
+        results.append(
+            create_rank(scale, y, height - 1, width, prettify_rank(y))
+        )
     for x in range(width):
         for y in range(height):
             results.append(create_dot(scale, x, y, height - 1))
-    return '\n'.join(results)
+    return "\n".join(results)
 
 
 def create_piece(scale, x, y, max_y, image_path, xlink=XLINK):
-    return f'''
+    return f"""
   <image
     x="{scale * x}"
     y="{scale * (max_y - y)}"
     width="{scale}"
     height="{scale}"
     {'xlink:' if xlink else ''}href="{image_path.as_uri()}" />
-'''
+"""
 
 
 def create_pieces(scale, board, xlink=XLINK):
@@ -167,24 +168,30 @@ def create_pieces(scale, board, xlink=XLINK):
     for cell in board.cells:
         piece = board.get_piece(cell)
         if piece is not None:
-            results.append(create_piece(
-                scale,
-                cell.col,
-                max_y - cell.row,
-                max_y,
-                get_image_path(piece),
-                xlink
-            ))
-    return '\n'.join(results)
+            results.append(
+                create_piece(
+                    scale,
+                    cell.col,
+                    max_y - cell.row,
+                    max_y,
+                    get_image_path(piece),
+                    xlink,
+                )
+            )
+    return "\n".join(results)
 
 
 def create_board(rectangle_width, rectangle_height, board, xlink=XLINK):
     scale = min(rectangle_width / board.width, rectangle_height / board.height)
     bleed = scale * (2 * UNSCALED_FONT_HEIGHT) / min(board.width, board.height)
-    view_box = f'{-bleed * board.width} {-bleed * board.height} ' + \
-               f'{(scale + 2 * bleed) * board.width} ' +\
-               f'{(scale + 2 * bleed) * board.height}'
+    view_box = (
+        f"{-bleed * board.width} {-bleed * board.height} "
+        + f"{(scale + 2 * bleed) * board.width} "
+        + f"{(scale + 2 * bleed) * board.height}"
+    )
     markings = create_board_markings(scale, board.width, board.height)
     pieces = create_pieces(scale, board, xlink)
-    return '<svg xmlns="http://www.w3.org/2000/svg" ' +\
-           f'viewBox="{view_box}">{markings}{pieces}</svg>'
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        + f'viewBox="{view_box}">{markings}{pieces}</svg>'
+    )

@@ -21,7 +21,7 @@ from .boost import Game
 from .rulesets import rulesets, DEFAULT_RULESET
 from .graphics import render_for_discord, RendererNotFoundError
 
-HELP = '''\
+HELP = """\
 **Commands:**
 - `/boost`: view the current state of the game board
 - `/boost new`: start a new game
@@ -31,20 +31,20 @@ HELP = '''\
 - `/boost forfeit`: forfeit the current game
 - `/boost info`: print information about the bot
 
-**Rules:** <https://github.com/Maugrift/boost/blob/master/RULES.md>'''
+**Rules:** <https://github.com/Maugrift/boost/blob/master/RULES.md>"""
 
-INFO = '''\
+INFO = """\
 This bot uses a Python implementation of the Boost board game\
 designed by Dr. Brady J. Garvin (<https://cse.unl.edu/~bgarvin/>).
 - Author: Aaron Friesen - <https://maugrift.com>
-- Source Code: <https://github.com/Maugrift/boost>'''
+- Source Code: <https://github.com/Maugrift/boost>"""
 
 # If true, each Discord user may control multiple groups of pieces in the game
 # Playing on another registered player's turn is still forbidden
 DUPLICATE_PLAYERS = True
 COLOR = False
 BOARD_IMAGE_SIZE = 1024
-BOARD_IMAGE_BACKGROUND_RGBA = 'dededeff'
+BOARD_IMAGE_BACKGROUND_RGBA = "dededeff"
 
 
 class GameWrapper:
@@ -66,7 +66,7 @@ class GameWrapper:
 
     @property
     def board_string(self):
-        return f'```{self.game.board.pretty}```'
+        return f"```{self.game.board.pretty}```"
 
     @property
     def player_string(self):
@@ -78,18 +78,18 @@ class GameWrapper:
         try:
             image = render_for_discord(
                 self.game.board,
-                'board.png',
+                "board.png",
                 BOARD_IMAGE_SIZE,
                 BOARD_IMAGE_SIZE,
                 BOARD_IMAGE_BACKGROUND_RGBA,
             )
             return {
-                'file': image,
-                'content': text,
+                "file": image,
+                "content": text,
             }
         except RendererNotFoundError:
             return {
-                'content': self.board_string + text,
+                "content": self.board_string + text,
             }
 
     @property
@@ -99,8 +99,8 @@ class GameWrapper:
     def game_over(self, winner):
         winner_string = self.users[winner - 1]
         if not winner_string:
-            winner_string = f'Player {winner}'
-        result = self._build_message(f'{winner_string} won the game!')
+            winner_string = f"Player {winner}"
+        result = self._build_message(f"{winner_string} won the game!")
         self.reset()
         return result
 
@@ -111,7 +111,7 @@ wrappers = {}
 
 @client.event
 async def on_ready():
-    print(f'Logged in as {client.user}')
+    print(f"Logged in as {client.user}")
 
 
 @client.event
@@ -119,7 +119,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('/boost'):
+    if message.content.startswith("/boost"):
         wrapper = wrappers.get(message.channel.id)
         if not wrapper:
             wrapper = GameWrapper(rulesets[DEFAULT_RULESET])
@@ -131,27 +131,27 @@ async def on_message(message):
             return
 
         move_input = data[1]
-        if move_input == 'new':
+        if move_input == "new":
             wrapper.reset()
             await message.channel.send(**wrapper.message)
             return
 
-        if move_input == 'help':
+        if move_input == "help":
             await message.channel.send(HELP)
             return
 
-        if move_input == 'info':
+        if move_input == "info":
             await message.channel.send(INFO)
             return
 
         user = message.author.mention
         if user not in wrapper.users and None not in wrapper.users:
-            await message.channel.send('You are not a player in this game.')
+            await message.channel.send("You are not a player in this game.")
             return
 
         game = wrapper.game
         winner = None
-        if move_input == 'undo':
+        if move_input == "undo":
             error = game.undo()
             if error:
                 await message.channel.send(error)
@@ -159,14 +159,15 @@ async def on_message(message):
                 await message.channel.send(**wrapper.message)
             return
 
-        if move_input == 'forfeit':
+        if move_input == "forfeit":
             winner = wrapper.game.forfeit()
         else:
-            if ((wrapper.current_user and user != wrapper.current_user) or
-                    (not DUPLICATE_PLAYERS and
-                     not wrapper.current_user and
-                     user in wrapper.users)):
-                await message.channel.send('It is not your turn to play.')
+            if (wrapper.current_user and user != wrapper.current_user) or (
+                not DUPLICATE_PLAYERS
+                and not wrapper.current_user
+                and user in wrapper.users
+            ):
+                await message.channel.send("It is not your turn to play.")
                 return
             if not wrapper.current_user:
                 wrapper.set_current_user(user)
@@ -174,9 +175,10 @@ async def on_message(message):
             try:
                 move = game.board.parse_move(move_input)
             except ValueError:
-                await message.channel.send('Unrecognized command or move. '
-                                           'For a list of commands, run '
-                                           '`/boost help`.')
+                await message.channel.send(
+                    "Unrecognized command or move. For a list of commands, "
+                    "run `/boost help`."
+                )
                 return
             else:
                 error = game.get_move_error(move)
@@ -192,8 +194,8 @@ async def on_message(message):
 
 
 # Read Discord bot token as first command line argument
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print('Please enter your Discord bot token as a command line argument')
+        print("Please enter your Discord bot token as a command line argument")
         sys.exit(1)
     client.run(sys.argv[1])
