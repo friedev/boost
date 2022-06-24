@@ -1200,7 +1200,8 @@ def main():
         "use 0 for completely random AI moves",
     )
     parser.add_argument(
-        "-G" "--no-cache",
+        "-G",
+        "--no-cache",
         action="store_false",
         help="disable caching the best AI move for previously "
         "considered board states",
